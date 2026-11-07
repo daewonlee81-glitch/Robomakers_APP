@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.2.2';
+import { t } from './i18n.js?v=0.3.0';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -69,6 +69,51 @@ export const EXAMPLES = {
           [B('rm_ai_pose_bool', { WHAT: 'left_hand_up' }), [B('rm_light', { COLOR: 'BLUE' })]],
           [B('rm_ai_pose_bool', { WHAT: 'right_hand_up' }), [B('rm_light', { COLOR: 'RED' })]],
         ], [B('rm_light_off')]),
+      ]),
+    ])),
+  },
+  object: {
+    title: () => t('ex.object'),
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+      forever([
+        ifElif([
+          [{ type: 'logic_negate', inputs: { BOOL: V(B('rm_ai_obj_seen', { OBJ: '1' })) } }, [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(60) })]],
+          [{ type: 'logic_compare', fields: { OP: 'LT' }, inputs: { A: V(B('rm_ai_obj_value', { OBJ: '1', WHAT: '1' })), B: N(40) } },
+            [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(-45) })]],
+          [{ type: 'logic_compare', fields: { OP: 'GT' }, inputs: { A: V(B('rm_ai_obj_value', { OBJ: '1', WHAT: '1' })), B: N(60) } },
+            [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(45) })]],
+        ], [B('rm_drive_stop')]),
+      ]),
+    ])),
+  },
+  teach: {
+    title: () => t('ex.teach'),
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      forever([
+        ifElif([
+          [B('rm_ai_teach_is', { N: '1' }), [h.display ? B('rm_display_number', {}, { NUM: N(1) }) : B('rm_light', { COLOR: 'GREEN' })]],
+          [B('rm_ai_teach_is', { N: '2' }), [h.display ? B('rm_display_number', {}, { NUM: N(2) }) : B('rm_light', { COLOR: 'BLUE' })]],
+        ], [h.display ? B('rm_display_clear') : B('rm_light_off')]),
+      ]),
+    ])),
+  },
+  lcolor: {
+    title: () => t('ex.lcolor'),
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+      forever([
+        ifElse(B('rm_ai_lcolor_seen', { N: '1' }),
+          [B('rm_drive_drive', {}, {
+            SPEED: N(100),
+            TURN: V({ type: 'math_arithmetic', fields: { OP: 'MULTIPLY' }, inputs: {
+              A: V({ type: 'math_arithmetic', fields: { OP: 'MINUS' }, inputs: { A: V(B('rm_ai_lcolor_value', { N: '1', WHAT: '1' })), B: N(50) } }),
+              B: N(2) } }),
+          })],
+          [B('rm_drive_stop')]),
       ]),
     ])),
   },

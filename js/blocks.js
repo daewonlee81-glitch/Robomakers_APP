@@ -1,8 +1,9 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.2.2';
-import { t } from './i18n.js?v=0.2.2';
+import { hub } from './hubs.js?v=0.3.0';
+import { t, cocoLabel } from './i18n.js?v=0.3.0';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.0';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -397,6 +398,49 @@ G.forBlock['rm_ai_pose_value'] = (b) => {
   impModule('rm_aicam');
   return [`rm_aicam.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
 };
+
+// ── 사물 인식 · 사물 학습 · 색 인식 · 색 학습 ──
+const objOptions = () => [[t('coco.any'), '0'], ...OBJ_PICK.map((n) => [cocoLabel(cocoId(n) - 1), String(cocoId(n))])];
+export function teachNames() {
+  try {
+    return JSON.parse(localStorage.getItem('rm-teach-names') || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+const teachOptions = () => {
+  const names = teachNames();
+  return Array.from({ length: TEACH_CLASSES }, (_, i) => [names[i] || t('teach.class', i + 1), String(i + 1)]);
+};
+const colorSlotOptions = () => Array.from({ length: COLOR_SLOTS }, (_, i) => [t('color.slot', i + 1), String(i + 1)]);
+const aicam = () => {
+  impModule('rm_aicam');
+  return 'rm_aicam';
+};
+
+def('rm_ai_obj_seen', C.ai, null, [dd('OBJ', objOptions)], 'bool');
+G.forBlock['rm_ai_obj_seen'] = (b) => [`${aicam()}.object_seen(${b.getFieldValue('OBJ')})`, O.FUNCTION_CALL];
+def('rm_ai_obj_value', C.ai, null, [dd('OBJ', objOptions), dd('WHAT', () => [
+  [t('o.objv.x'), '1'], [t('o.objv.y'), '2'], [t('o.objv.size'), '3'], [t('o.objv.score'), '4'], [t('o.objv.id'), '0']])], 'num');
+G.forBlock['rm_ai_obj_value'] = (b) => [`${aicam()}.object_value(${b.getFieldValue('OBJ')}, ${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
+
+def('rm_ai_teach_is', C.ai, null, [dd('N', teachOptions)], 'bool');
+G.forBlock['rm_ai_teach_is'] = (b) => [`${aicam()}.taught_is(${b.getFieldValue('N')})`, O.FUNCTION_CALL];
+def('rm_ai_teach_value', C.ai, null, [dd('WHAT', () => opts('teachv', ['taught', 'taught_conf']))], 'num');
+G.forBlock['rm_ai_teach_value'] = (b) => [`${aicam()}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+def('rm_ai_color_is', C.ai, null, [dd('COLOR', () => opts('color', ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'CYAN', 'BLUE', 'VIOLET', 'MAGENTA', 'WHITE', 'BLACK']))], 'bool');
+G.forBlock['rm_ai_color_is'] = (b) => [`${aicam()}.center_color_is(rm_aicam.${b.getFieldValue('COLOR')})`, O.FUNCTION_CALL];
+def('rm_ai_color_value', C.ai, null, [dd('WHAT', () => [[t('o.colorv.id'), 'id'], [t('o.colorv.r'), '0'], [t('o.colorv.g'), '1'], [t('o.colorv.b'), '2']])], 'num');
+G.forBlock['rm_ai_color_value'] = (b) => {
+  const w = b.getFieldValue('WHAT');
+  return [w === 'id' ? `${aicam()}.center_color()` : `${aicam()}.center_rgb(${w})`, O.FUNCTION_CALL];
+};
+
+def('rm_ai_lcolor_seen', C.ai, null, [dd('N', colorSlotOptions)], 'bool');
+G.forBlock['rm_ai_lcolor_seen'] = (b) => [`${aicam()}.learned_color_seen(${b.getFieldValue('N')})`, O.FUNCTION_CALL];
+def('rm_ai_lcolor_value', C.ai, null, [dd('N', colorSlotOptions), dd('WHAT', () => [[t('o.objv.x'), '1'], [t('o.objv.y'), '2'], [t('o.lcolv.size'), '3']])], 'num');
+G.forBlock['rm_ai_lcolor_value'] = (b) => [`${aicam()}.learned_color_value(${b.getFieldValue('N')}, ${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
 
 // ════════════════════════ 게임패드 ════════════════════════
 def('rm_pad_setup', C.pad, null, [dd('SRC', padSources), dd('PORT', lpfPorts)], 'stmt');

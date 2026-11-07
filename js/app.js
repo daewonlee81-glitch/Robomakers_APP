@@ -1,16 +1,16 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.2.2';
-import { generatePython } from './blocks.js?v=0.2.2';
-import { buildToolbox } from './toolbox.js?v=0.2.2';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.2.2';
-import { makeZip } from './zip.js?v=0.2.2';
-import { initHelp } from './help.js?v=0.2.2';
-import { AICamera } from './aicam.js?v=0.2.2';
-import { LANGS, getLang, setLang, t, applyDom } from './i18n.js?v=0.2.2';
-import { WebGamepad } from './gamepad.js?v=0.2.2';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.2.2';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.0';
+import { generatePython, teachNames } from './blocks.js?v=0.3.0';
+import { buildToolbox } from './toolbox.js?v=0.3.0';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.0';
+import { makeZip } from './zip.js?v=0.3.0';
+import { initHelp } from './help.js?v=0.3.0';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.0';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.0';
+import { WebGamepad } from './gamepad.js?v=0.3.0';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.0';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -270,7 +270,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.2.2`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.0`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -388,27 +388,208 @@ $('#btnPanel').addEventListener('click', () => {
 // ───────────────────────── AI 카메라 ─────────────────────────
 const cam = new AICamera($('#camVideo'), $('#camCanvas'));
 const camBtn = $('#btnCam');
+const CAM_MODES_KEY = 'rm-cam-modes';
+const NAMES_KEY = 'rm-teach-names';
+cam.labelOf = (name) => cocoLabel(COCO.indexOf(name));
+const teachName = (i) => teachNames()[i] || t('teach.class', i + 1);
+cam.teachNames = teachName;
+
+function camModes() {
+  return [...document.querySelectorAll('#camModes input:checked')].map((x) => x.value);
+}
+try {
+  const saved = JSON.parse(localStorage.getItem(CAM_MODES_KEY) || 'null');
+  if (saved) document.querySelectorAll('#camModes input').forEach((x) => (x.checked = saved.includes(x.value)));
+} catch (e) {
+  /* 무시 */
+}
+function showPanels() {
+  const m = camModes();
+  $('#teachPanel').hidden = !m.includes('teach');
+  $('#colorPanel').hidden = !m.includes('color');
+}
+
+// 읽은 값 표시
+function readoutRow(label, html) {
+  return `<div><small>${label}</small><span>${html}</span></div>`;
+}
 cam.onUpdate = () => {
-  const [hd, g, x, y, f] = cam.hand;
-  const [pd, nx, ny, lu, ru, bx, tilt, sp] = cam.body;
-  $('#camHand').innerHTML = hd
-    ? `<b>${t('g.' + g)}</b> · X ${x} · Y ${y} · ${t('cam.fingers')} ${f}`
-    : cam.mode === 'pose' ? '—' : t('cam.noHand');
-  $('#camPose').innerHTML = pd
-    ? `${t('cam.bodyX')} ${bx} · ${t('cam.nose')} ${nx},${ny} · ${t('cam.tilt')} ${tilt}° ${lu ? '· ' + t('cam.leftUp') : ''} ${ru ? '· ' + t('cam.rightUp') : ''} ${sp ? '· ' + t('cam.spread') : ''}`
-    : cam.mode === 'hand' ? '—' : t('cam.noPerson');
+  const m = new Set(camModes());
+  const rows = [];
+  if (m.has('hand')) {
+    const [hd, g, x, y, f] = cam.hand;
+    rows.push(readoutRow(t('cam.hand'), hd ? `<b>${t('g.' + g)}</b> · X ${x} · Y ${y} · ${t('cam.fingers')} ${f}` : t('cam.noHand')));
+  }
+  if (m.has('pose')) {
+    const [pd, nx, ny, lu, ru, bx, tilt, sp] = cam.body;
+    rows.push(readoutRow(t('cam.pose'), pd
+      ? `${t('cam.bodyX')} ${bx} · ${t('cam.nose')} ${nx},${ny} · ${t('cam.tilt')} ${tilt}° ${lu ? '· ' + t('cam.leftUp') : ''} ${ru ? '· ' + t('cam.rightUp') : ''} ${sp ? '· ' + t('cam.spread') : ''}`
+      : t('cam.noPerson')));
+  }
+  if (m.has('object')) {
+    rows.push(readoutRow(t('cam.object'), cam.objects.length
+      ? cam.objects.map((o) => `<b>${cam.labelOf(o.name)}</b> ${o.score}% (X ${o.x}, Y ${o.y})`).join(' · ')
+      : t('cam.noObject')));
+  }
+  if (m.has('teach')) {
+    rows.push(readoutRow(t('cam.teach'), cam.taught.id
+      ? `<b>${teachName(cam.taught.id - 1)}</b> · ${t('cam.conf')} ${cam.taught.conf}%`
+      : t('cam.notTrained')));
+  }
+  if (m.has('color')) {
+    const c = cam.center;
+    const seen = cam.blobs.map((b, i) => (b.seen ? `#${i + 1} (X ${b.x}, Y ${b.y}, ${b.size}%)` : '')).filter(Boolean).join(' · ');
+    rows.push(readoutRow(t('cam.color'), `<i class="dot" style="background:${COLOR_CSS[c.id]};border:1px solid #ccd"></i> <b>${t('o.color.' + COLOR_IDS[c.id])}</b> · RGB ${c.r},${c.g},${c.b}`));
+    rows.push(readoutRow(t('cam.lcolor'), seen || '—'));
+  }
+  $('#camReadout').innerHTML = rows.join('');
+  if (cam.running) refreshLearnCounts();
 };
+
+// 사물 학습 패널
+function renderTeach() {
+  const names = teachNames();
+  $('#teachRows').innerHTML = Array.from({ length: TEACH_CLASSES }, (_, i) => `
+    <div class="lrow" data-i="${i}">
+      <span class="num">${i + 1}</span>
+      <div><input type="text" value="${(names[i] || t('teach.class', i + 1)).replace(/"/g, '&quot;')}" maxlength="20"><div class="bar"><i style="width:0%"></i></div></div>
+      <span class="cnt"></span>
+      <button class="rec" type="button">${t('teach.hold')}</button>
+      <button class="del" type="button" title="${t('teach.clear')}">🗑</button>
+    </div>`).join('');
+  refreshLearnCounts();
+}
+function refreshLearnCounts() {
+  document.querySelectorAll('#teachRows .lrow').forEach((row) => {
+    const i = +row.dataset.i;
+    row.querySelector('.cnt').textContent = t('teach.samples', cam.teach[i].length);
+    row.classList.toggle('active', cam.taught.id === i + 1);
+    row.querySelector('.bar i').style.width = (cam.taught.id === i + 1 ? cam.taught.conf : 0) + '%';
+  });
+}
+$('#teachRows').addEventListener('input', (e) => {
+  const names = [...document.querySelectorAll('#teachRows input[type=text]')].map((x) => x.value.trim());
+  try {
+    localStorage.setItem(NAMES_KEY, JSON.stringify(names));
+  } catch (err) {
+    /* 무시 */
+  }
+});
+const stopRec = () => {
+  if (cam.recording < 0) return;
+  cam.finishRecording();
+  document.querySelectorAll('#teachRows .rec').forEach((b) => b.classList.remove('on'));
+  refreshLearnCounts();
+};
+$('#teachRows').addEventListener('pointerdown', (e) => {
+  const rec = e.target.closest('.rec');
+  if (!rec) return;
+  if (!cam.running || !cam.models.teach) {
+    toast(t('teach.needCam'), 'err');
+    return;
+  }
+  e.preventDefault();
+  rec.setPointerCapture?.(e.pointerId);
+  rec.classList.add('on');
+  cam.recording = +rec.closest('.lrow').dataset.i;
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('#teachRows').addEventListener(ev, stopRec));
+$('#teachRows').addEventListener('click', (e) => {
+  const del = e.target.closest('.del');
+  if (!del) return;
+  cam.clearTeach(+del.closest('.lrow').dataset.i);
+  refreshLearnCounts();
+});
+$('#btnTeachClear').addEventListener('click', () => {
+  if (!confirm(t('teach.confirmClear'))) return;
+  cam.clearTeach();
+  refreshLearnCounts();
+});
+$('#btnTeachExport').addEventListener('click', () => {
+  const names = [...document.querySelectorAll('#teachRows input[type=text]')].map((x) => x.value.trim());
+  download(new Blob([JSON.stringify(cam.exportData(names))], { type: 'application/json' }), `${projectName()}-ai.json`);
+});
+$('#btnTeachImport').addEventListener('click', () => $('#teachFile').click());
+$('#teachFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const names = cam.importData(JSON.parse(await f.text()));
+    if (names) localStorage.setItem(NAMES_KEY, JSON.stringify(names));
+    renderTeach();
+    renderColors();
+    toast(t('teach.imported'), 'ok');
+  } catch (err) {
+    toast(t('msg.openFail', err.message), 'err');
+  }
+  e.target.value = '';
+});
+
+// 색 학습 패널
+function renderColors() {
+  $('#colorRows').innerHTML = Array.from({ length: COLOR_SLOTS }, (_, i) => {
+    const c = cam.colors[i];
+    return `
+    <div class="lrow" data-i="${i}">
+      <span class="num">${i + 1}</span>
+      <div class="sw ${c ? 'set' : ''}" style="${c ? `background:${c.rgb}` : ''}">${c ? t('color.slot', i + 1) : t('color.empty')}</div>
+      <span class="cnt"></span>
+      <button class="learnc rec" type="button">${t('color.learn')}</button>
+      <button class="del" type="button" title="${t('color.clear')}">🗑</button>
+    </div>`;
+  }).join('');
+}
+$('#colorRows').addEventListener('click', (e) => {
+  const row = e.target.closest('.lrow');
+  if (!row) return;
+  const i = +row.dataset.i;
+  if (e.target.closest('.learnc')) {
+    if (!cam.running) return toast(t('teach.needCam'), 'err');
+    if (cam.learnCenterColor(i)) toast(t('color.learned', i + 1), 'ok');
+  } else if (e.target.closest('.del')) {
+    cam.clearColor(i);
+  } else return;
+  renderColors();
+});
+
+document.querySelectorAll('#camModes input').forEach((x) =>
+  x.addEventListener('change', async () => {
+    try {
+      localStorage.setItem(CAM_MODES_KEY, JSON.stringify(camModes()));
+    } catch (e) {
+      /* 무시 */
+    }
+    showPanels();
+    if (cam.running) {
+      camBtn.disabled = true;
+      const old = camBtn.textContent;
+      camBtn.textContent = t('cam.loading');
+      try {
+        await cam.setModes(camModes());
+      } catch (e) {
+        toast(t('msg.camFail', e.message), 'err');
+      }
+      camBtn.textContent = old;
+      camBtn.disabled = false;
+    } else cam.modes = new Set(camModes());
+    cam.onUpdate(cam);
+  }),
+);
+
 camBtn.addEventListener('click', async () => {
   if (cam.running) {
+    stopRec();
     cam.stop();
     camBtn.textContent = t('cam.on');
     $('#camHint').hidden = false;
+    cam.onUpdate(cam);
     return;
   }
   camBtn.disabled = true;
   camBtn.textContent = t('cam.loading');
   try {
-    await cam.start($('#camMode').value);
+    await cam.setModes(camModes());
+    await cam.start();
     camBtn.textContent = t('cam.off');
     $('#camHint').hidden = true;
   } catch (e) {
@@ -417,7 +598,13 @@ camBtn.addEventListener('click', async () => {
   }
   camBtn.disabled = false;
 });
-$('#camMode').addEventListener('change', (e) => cam.setMode(e.target.value));
+showPanels();
+renderTeach();
+renderColors();
+cam.modes = new Set(camModes());
+cam.onUpdate(cam);
+// 문제 확인·시험용 (브라우저 콘솔에서 rmDebug.cam 등)
+window.rmDebug = { cam, hub: hubConn, workspace };
 
 // ───────────────────────── 게임패드 ─────────────────────────
 const gpad = new WebGamepad();

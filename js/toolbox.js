@@ -1,7 +1,7 @@
 // toolbox.js — 허브에 맞는 블록 꾸러미(툴박스)
-import { HUBS } from './hubs.js?v=0.2.2';
-import { C } from './blocks.js?v=0.2.2';
-import { t } from './i18n.js?v=0.2.2';
+import { HUBS } from './hubs.js?v=0.3.0';
+import { C } from './blocks.js?v=0.3.0';
+import { t } from './i18n.js?v=0.3.0';
 
 const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const txt = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -109,6 +109,18 @@ export function buildToolbox(hubKey) {
     label(t('tb.pose')),
     b('rm_ai_pose_bool'),
     b('rm_ai_pose_value'),
+    label(t('tb.object')),
+    b('rm_ai_obj_seen', null, { OBJ: '1' }),
+    b('rm_ai_obj_value', null, { OBJ: '1' }),
+    label(t('tb.teach')),
+    b('rm_ai_teach_is'),
+    b('rm_ai_teach_value'),
+    label(t('tb.color')),
+    b('rm_ai_color_is'),
+    b('rm_ai_color_value'),
+    label(t('tb.lcolor')),
+    b('rm_ai_lcolor_seen'),
+    b('rm_ai_lcolor_value'),
   ]));
 
   cats.push(cat(t('cat.pad'), C.pad, [

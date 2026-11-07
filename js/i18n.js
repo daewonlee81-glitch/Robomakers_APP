@@ -11,6 +11,8 @@ export const LANGS = [
   { code: 'th', name: 'ไทย', blockly: 'th', html: 'th' },
 ];
 
+import COCO_NAMES from './lang/coco.js?v=0.3.0';
+
 const KEY = 'rm-lang';
 let lang = 'ko';
 let dict = {};
@@ -49,9 +51,9 @@ function loadScript(src) {
 export async function initLang() {
   lang = detect();
   const info = LANGS.find((l) => l.code === lang);
-  fallback = (await import('./lang/en.js?v=0.2.2')).default;
-  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js?v=0.2.2`)).default;
-  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js?v=0.2.2`, import.meta.url).href);
+  fallback = (await import('./lang/en.js?v=0.3.0')).default;
+  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js?v=0.3.0`)).default;
+  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js?v=0.3.0`, import.meta.url).href);
   document.documentElement.lang = info.html;
   return lang;
 }
@@ -82,4 +84,10 @@ export function applyDom(root = document) {
   root.querySelectorAll('[data-i18n-value]').forEach((el) => (el.value = t(el.dataset.i18nValue)));
   root.querySelectorAll('[data-i18n-alt]').forEach((el) => (el.alt = t(el.dataset.i18nAlt)));
   document.title = t('app.title');
+}
+
+/** COCO 사물 이름 (0부터 시작하는 번호) — 현재 언어, 없으면 영어 */
+export function cocoLabel(i) {
+  const list = COCO_NAMES[lang] || COCO_NAMES.en;
+  return list[i] || COCO_NAMES.en[i] || '?';
 }

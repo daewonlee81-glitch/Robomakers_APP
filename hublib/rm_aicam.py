@@ -78,3 +78,86 @@ def shoulder_tilt():
 
 def arms_spread():
     return rm_link.get("P", 7) == 1
+
+
+# ---------- 사물 인식 (COCO 80종) ----------
+# O: [개수, 번호1, X1, Y1, 크기1, 확신도1, 번호2 ..., 번호3 ...]  (확신도 높은 순서, 최대 3개)
+# 사물 번호는 웹 에디터의 COCO 목록 순서 + 1 (예: 1 = 사람, 42 = 컵)
+
+def _objects():
+    v = rm_link.values("O")
+    out = []
+    if not v:
+        return out
+    for i in range(min(v[0], 3)):
+        j = 1 + i * 5
+        if j + 4 < len(v):
+            out.append(v[j:j + 5])
+    return out
+
+
+def object_seen(n=0):
+    """사물 n 번이 보이면 True (n=0 이면 아무 사물이나)."""
+    for o in _objects():
+        if n == 0 or o[0] == n:
+            return True
+    return False
+
+
+def object_value(n=0, what=1):
+    """사물 n 번의 값 (n=0 이면 가장 확실한 사물). what: 0=번호 1=X 2=Y 3=크기 4=확신도. 안 보이면 0."""
+    for o in _objects():
+        if n == 0 or o[0] == n:
+            return o[what]
+    return 0
+
+
+def object_count():
+    return len(_objects())
+
+
+# ---------- 사물 학습 ----------
+# T: [학습한 사물 번호(0=학습 안 함), 확신도]
+
+def taught():
+    return rm_link.get("T", 0)
+
+
+def taught_is(n):
+    return taught() == n
+
+
+def taught_conf():
+    return rm_link.get("T", 1)
+
+
+# ---------- 색 인식 (화면 가운데) ----------
+# C: [색 번호, R, G, B]   색 번호: 0 없음 1 빨강 2 주황 3 노랑 4 초록 5 하늘 6 파랑 7 보라 8 자홍 9 흰색 10 검정
+NO_COLOR, RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, VIOLET, MAGENTA, WHITE, BLACK = range(11)
+
+
+def center_color():
+    return rm_link.get("C", 0)
+
+
+def center_color_is(c):
+    return center_color() == c
+
+
+def center_rgb(i):
+    """i: 0=R 1=G 2=B (0~255)"""
+    return rm_link.get("C", 1 + i)
+
+
+# ---------- 색 학습 (학습한 색 덩어리 추적, 최대 5가지) ----------
+# K: [보임1, X1, Y1, 크기1, 보임2, ...]   크기 = 화면에서 차지하는 비율(%)
+
+def learned_color_seen(n):
+    return rm_link.get("K", (n - 1) * 4) == 1
+
+
+def learned_color_value(n, what):
+    """what: 1=X 2=Y 3=크기(%). 안 보이면 X·Y 는 50, 크기는 0."""
+    if not learned_color_seen(n):
+        return 0 if what == 3 else 50
+    return rm_link.get("K", (n - 1) * 4 + what)
