@@ -2,6 +2,7 @@
 // 프로토콜 출처: github.com/pybricks/pybricks-code (MIT), Pybricks Profile v1.2 ~ v1.5
 
 /* global MpyCross */
+import { t } from './i18n.js';
 
 export const PYBRICKS_SERVICE = 'c5f50001-8280-46da-89f4-6d8051e4aeef';
 const PYBRICKS_CMD_EVENT = 'c5f50002-8280-46da-89f4-6d8051e4aeef';
@@ -59,7 +60,8 @@ export function compileMpy(fileName, source) {
  * @param {string} mainSource
  * @param {(name:string)=>Promise<string|null>} loadLib  모듈 이름 → 소스 (없으면 null)
  */
-export async function buildProgram(mainSource, loadLib) {
+/** 메인 코드가 import 하는 허브 라이브러리 소스를 모두 모읍니다: [[이름, 소스], …] (첫 항목 = __main__) */
+export async function collectSources(mainSource, loadLib) {
   const modules = [['__main__', mainSource]];
   const seen = new Set(['__main__']);
   const queue = [mainSource];
@@ -75,11 +77,16 @@ export async function buildProgram(mainSource, loadLib) {
       }
     }
   }
+  return modules;
+}
+
+export async function buildProgram(mainSource, loadLib) {
+  const modules = await collectSources(mainSource, loadLib);
   const parts = [];
   for (const [name, src] of modules) {
     const r = await compileMpy(name === '__main__' ? 'main.py' : name + '.py', src);
     if (r.status !== 0 || !r.mpy) {
-      const msg = (r.err || []).join('\n') || '컴파일 오류';
+      const msg = (r.err || []).join('\n') || t('err.compile');
       throw new CompileError(name, msg);
     }
     const size = new Uint8Array(4);
@@ -125,7 +132,7 @@ class BleTransport {
   }
 
   async connect() {
-    if (!navigator.bluetooth) throw new Error('이 브라우저는 Web Bluetooth 를 지원하지 않습니다. 크롬(데스크톱/안드로이드)을 사용하세요.');
+    if (!navigator.bluetooth) throw new Error(t('err.noBluetooth'));
     this.device = await navigator.bluetooth.requestDevice({
       filters: [{ services: [PYBRICKS_SERVICE] }],
       optionalServices: [PYBRICKS_SERVICE, DEVICE_INFO],
@@ -178,7 +185,7 @@ class UsbTransport {
   }
 
   async connect() {
-    if (!navigator.usb) throw new Error('이 브라우저는 WebUSB 를 지원하지 않습니다. 크롬을 사용하세요.');
+    if (!navigator.usb) throw new Error(t('err.noUsb'));
     this.dev = await navigator.usb.requestDevice({
       filters: [{ classCode: USB_CLASS, subclassCode: USB_SUBCLASS, protocolCode: USB_PROTOCOL }],
     });
@@ -191,21 +198,21 @@ class UsbTransport {
         i.alternate.interfaceSubclass === USB_SUBCLASS &&
         i.alternate.interfaceProtocol === USB_PROTOCOL,
     );
-    if (!iface) throw new Error('Pybricks USB 인터페이스를 찾을 수 없습니다. 최신 Pybricks 펌웨어인지 확인하세요.');
+    if (!iface) throw new Error(t('err.noUsbIface'));
     this.ifaceNum = iface.interfaceNumber;
     this.inEp = iface.alternate.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
     this.outEp = iface.alternate.endpoints.find((e) => e.direction === 'out' && e.type === 'bulk');
     try {
       await dev.claimInterface(this.ifaceNum);
     } catch (e) {
-      throw new Error('USB 장치를 다른 프로그램(Pybricks Code 탭 등)이 사용 중입니다. 그 탭을 닫고 다시 연결하세요.');
+      throw new Error(t('err.usbBusy'));
     }
     const ctrl = async (req, value) => {
       const r = await dev.controlTransferIn(
         { requestType: 'class', recipient: 'interface', request: req, value, index: this.ifaceNum },
         20,
       );
-      if (r.status !== 'ok') throw new Error('USB 요청 실패');
+      if (r.status !== 'ok') throw new Error(t('err.usbReq'));
       return r.data;
     };
     const info = {};
@@ -248,7 +255,7 @@ class UsbTransport {
         if (this._pending) {
           const p = this._pending;
           this._pending = null;
-          code === 0 ? p.resolve() : p.reject(new Error('허브 명령 실패 (코드 ' + code + ')'));
+          code === 0 ? p.resolve() : p.reject(new Error(t('err.cmdFail', code)));
         }
       } else if (type === USB_IN_EVENT) {
         this.onEvent(new DataView(r.data.buffer.slice(r.data.byteOffset + 1, r.data.byteOffset + r.data.byteLength)));
@@ -265,7 +272,7 @@ class UsbTransport {
       setTimeout(() => {
         if (this._pending) {
           this._pending = null;
-          reject(new Error('허브 응답 시간 초과'));
+          reject(new Error(t('err.timeout')));
         }
       }, 1500);
     });
@@ -317,7 +324,7 @@ export class PybricksHub extends EventTarget {
     this.transport = t;
     if (!verGte(this.info.profile, '1.2.0')) {
       await this.disconnect();
-      throw new Error(`허브 펌웨어가 너무 오래되었습니다 (프로파일 ${this.info.profile}). code.pybricks.com 에서 최신 Pybricks 펌웨어를 설치하세요.`);
+      throw new Error(t('err.oldFw', this.info.profile));
     }
     this._emit('connect', this.info);
     return this.info;
@@ -348,7 +355,7 @@ export class PybricksHub extends EventTarget {
   /** 명령을 순서대로 하나씩 보냅니다. */
   _send(bytes) {
     const run = () => {
-      if (!this.transport) throw new Error('허브가 연결되어 있지 않습니다.');
+      if (!this.transport) throw new Error(t('err.notConnected'));
       return this.transport.write(bytes);
     };
     const p = this._queue.then(run, run);
@@ -368,7 +375,7 @@ export class PybricksHub extends EventTarget {
   async downloadAndRun(program, onProgress = () => {}) {
     const info = this.info;
     if (info.maxProgram && program.length > info.maxProgram) {
-      throw new Error(`프로그램이 너무 큽니다 (${program.length} / 최대 ${info.maxProgram} 바이트).`);
+      throw new Error(t('err.tooBig', program.length, info.maxProgram));
     }
     if (this.running) {
       await this.stop();

@@ -1,5 +1,7 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
+import { t } from './i18n.js';
+
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
 const B = (type, fields = {}, inputs = {}) => ({ type, fields, inputs });
@@ -32,7 +34,7 @@ const ws = (top) => ({ blocks: { languageVersion: 0, blocks: [top] } });
 
 export const EXAMPLES = {
   basic: {
-    title: '기본: 앞으로 갔다 돌아오기',
+    title: () => t('ex.basic'),
     hubs: ['prime', 'essential', 'ev3'],
     build: (h) => ws(start([
       B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
@@ -44,7 +46,7 @@ export const EXAMPLES = {
     ].filter((b) => h.speaker || b.type !== 'rm_beep'))),
   },
   hand: {
-    title: 'AI 카메라: 손 모양으로 로봇 조종',
+    title: () => t('ex.hand'),
     hubs: ['prime', 'essential', 'ev3'],
     build: (h) => ws(start([
       B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
@@ -58,7 +60,7 @@ export const EXAMPLES = {
     ])),
   },
   pose: {
-    title: 'AI 카메라: 손 들면 불빛 바꾸기 (스켈레톤)',
+    title: () => t('ex.pose'),
     hubs: ['prime', 'essential', 'ev3'],
     build: () => ws(start([
       forever([
@@ -71,7 +73,7 @@ export const EXAMPLES = {
     ])),
   },
   pad: {
-    title: '게임패드: 탱크 주행 + A 버튼 소리',
+    title: () => t('ex.pad'),
     hubs: ['prime', 'essential', 'ev3'],
     build: (h) => ws(start([
       B('rm_pad_setup', { SRC: 'web', PORT: h.lpf2 ? h.sensorPorts[0] : 'A' }),
@@ -83,7 +85,7 @@ export const EXAMPLES = {
     ])),
   },
   husky: {
-    title: '허스키렌즈: 색 따라 회전하기',
+    title: () => t('ex.husky'),
     hubs: ['prime', 'essential'],
     build: (h) => {
       const P = h.sensorPorts.length > 2 ? 'C' : 'B';
@@ -102,7 +104,7 @@ export const EXAMPLES = {
     },
   },
   esp32: {
-    title: 'ESP32(PUPRemote): 채널 값 화면에 보이기',
+    title: () => t('ex.esp32'),
     hubs: ['prime'],
     build: () => ws(start([
       B('rm_esp_channel', { PORT: 'A', NAME: 'line', FMT: 'hhb' }),

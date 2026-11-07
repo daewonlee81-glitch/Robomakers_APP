@@ -4,12 +4,17 @@
 import { HUBS, getHubKey, setHubKey, hub } from './hubs.js';
 import { generatePython } from './blocks.js';
 import { buildToolbox } from './toolbox.js';
-import { PybricksHub, buildProgram, CompileError } from './pybricks.js';
-import { AICamera, GESTURE_KO } from './aicam.js';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js';
+import { makeZip } from './zip.js';
+import { initHelp } from './help.js';
+import { AICamera } from './aicam.js';
+import { LANGS, getLang, setLang, t, applyDom } from './i18n.js';
 import { WebGamepad } from './gamepad.js';
 import { EXAMPLES, emptyProgram } from './examples.js';
 
 const $ = (s) => document.querySelector(s);
+applyDom();
+const projectName = () => ($('#projectName').value || t('top.projectDefault')).replace(/[\\/:*?"<>|]/g, '_');
 const STORE = 'rm-wordblock-v1';
 
 // ───────────────────────── Blockly 작업 공간 ─────────────────────────
@@ -84,7 +89,7 @@ function refreshCode() {
     currentCode = generatePython(workspace).code;
   } catch (e) {
     console.error(e);
-    currentCode = '# 코드 생성 오류: ' + e.message;
+    currentCode = '# ' + e.message;
   }
   codeView.innerHTML = highlight(currentCode);
   if (!editToggle.checked) codeEdit.value = currentCode;
@@ -121,7 +126,7 @@ function selectHub(key, keepBlocks = true) {
   const h = HUBS[key];
   const tSel = $('#transportSelect');
   tSel.innerHTML = h.transport
-    .map((t) => `<option value="${t}">${t === 'ble' ? '블루투스' : key === 'prime' ? 'USB (실험적)' : 'USB'}</option>`)
+    .map((tr) => `<option value="${tr}">${tr === 'ble' ? t('transport.ble') : t('transport.usb')}</option>`)
     .join('');
   tSel.disabled = h.transport.length < 2;
   if (!keepBlocks) load(emptyProgram());
@@ -142,11 +147,12 @@ $('#hubSelect').addEventListener('change', (e) => {
 });
 
 $('#btnNew').addEventListener('click', () => {
-  if (confirm('새 프로그램을 만들까요? 지금 블록은 지워집니다.')) load(emptyProgram());
+  $('#fileMenu').hidden = true;
+  if (confirm(t('msg.confirmNew'))) load(emptyProgram());
 });
 $('#btnSave').addEventListener('click', () => {
   const data = JSON.stringify({ app: 'robomakers-wordblock', version: 1, hub: getHubKey(), ws: Blockly.serialization.workspaces.save(workspace) }, null, 1);
-  download(new Blob([data], { type: 'application/json' }), `${$('#projectName').value || '내프로젝트'}.rmb.json`);
+  download(new Blob([data], { type: 'application/json' }), `${projectName()}.rmb.json`);
 });
 $('#btnOpen').addEventListener('click', () => $('#fileInput').click());
 $('#fileInput').addEventListener('change', async (e) => {
@@ -158,16 +164,47 @@ $('#fileInput').addEventListener('change', async (e) => {
     load(data.ws);
     $('#projectName').value = f.name.replace(/\.rmb\.json$|\.json$/, '');
   } catch (err) {
-    alert('파일을 열 수 없습니다: ' + err.message);
+    alert(t('msg.openFail', err.message));
   }
   e.target.value = '';
 });
+// ── 다운로드 메뉴 ──
+const pyNow = () => (editToggle.checked ? codeEdit.value : currentCode);
+const downloads = {
+  py: () => download(new Blob([pyNow()], { type: 'text/x-python' }), `${projectName()}.py`),
+  zip: async () => {
+    const mods = await collectSources(pyNow(), loadLib);
+    const files = mods.map(([name, src]) => ({ name: `${projectName()}/${name === '__main__' ? 'main' : name}.py`, data: src }));
+    files.push({ name: `${projectName()}/README.txt`, data: t('dl.readme') + '\n' });
+    download(makeZip(files), `${projectName()}.zip`);
+  },
+  project: () => $('#btnSave').click(),
+};
+$('#downloadMenu').addEventListener('click', (e) => {
+  const item = e.target.closest('[data-dl]');
+  if (!item) return;
+  $('#downloadMenu').hidden = true;
+  downloads[item.dataset.dl]();
+});
+
+// ── 언어 선택 (바꾸면 블록을 저장한 뒤 새로 불러옵니다) ──
+const langSel = $('#langSelect');
+langSel.innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.name}</option>`).join('');
+langSel.value = getLang();
+langSel.addEventListener('change', () => {
+  save();
+  setLang(langSel.value);
+  const u = new URL(location.href);
+  u.searchParams.delete('lang');
+  location.href = u.href;
+});
+
 $('#btnExportPy').addEventListener('click', () => {
-  download(new Blob([editToggle.checked ? codeEdit.value : currentCode], { type: 'text/x-python' }), `${$('#projectName').value || 'main'}.py`);
+  downloads.py();
 });
 $('#btnCopyPy').addEventListener('click', async () => {
   await navigator.clipboard.writeText(editToggle.checked ? codeEdit.value : currentCode);
-  toast('파이썬 코드를 복사했습니다');
+  toast(t('msg.copied'));
 });
 
 function download(blob, name) {
@@ -185,7 +222,7 @@ function renderExamples() {
   for (const [k, ex] of Object.entries(EXAMPLES)) {
     if (!ex.hubs.includes(getHubKey())) continue;
     const b = document.createElement('button');
-    b.textContent = ex.title;
+    b.textContent = ex.title();
     b.onclick = () => {
       menu.hidden = true;
       load(ex.build(hub()));
@@ -193,11 +230,18 @@ function renderExamples() {
     menu.appendChild(b);
   }
 }
-$('#btnExamples').addEventListener('click', (e) => {
-  e.stopPropagation();
-  $('#exampleMenu').hidden = !$('#exampleMenu').hidden;
-});
-document.addEventListener('click', () => ($('#exampleMenu').hidden = true));
+// 위쪽 드롭다운 메뉴 (예제 / 파일 / 다운로드): 버튼을 누르면 열고, 다른 곳을 누르면 닫습니다.
+const menus = [...document.querySelectorAll('.menuwrap')];
+menus.forEach((w) =>
+  w.querySelector(':scope > button').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const m = w.querySelector('.menu');
+    const open = m.hidden;
+    menus.forEach((x) => (x.querySelector('.menu').hidden = true));
+    m.hidden = !open;
+  }),
+);
+document.addEventListener('click', () => menus.forEach((x) => (x.querySelector('.menu').hidden = true)));
 
 // ───────────────────────── 터미널 / 알림 ─────────────────────────
 const term = $('#terminal');
@@ -233,13 +277,13 @@ async function loadLib(name) {
 
 function setConnUi() {
   const c = hubConn.connected;
-  $('#btnConnect').textContent = c ? '연결 끊기' : '허브 연결';
+  $('#btnConnect').textContent = c ? t('top.disconnect') : t('top.connect');
   $('#btnConnect').classList.toggle('connected', c);
   $('#btnRun').disabled = !c;
   $('#btnStop').disabled = !c;
   $('#hubStatus').className = 'dot ' + (c ? (hubConn.running ? 'running' : 'on') : '');
-  $('#hubName').textContent = c ? `${hubConn.info.name}` : '연결 안 됨';
-  $('#hubName').title = c ? `펌웨어 ${hubConn.info.firmware || '?'} · 프로파일 ${hubConn.info.profile}` : '';
+  $('#hubName').textContent = c ? `${hubConn.info.name}` : t('top.notConnected');
+  $('#hubName').title = c ? t('msg.fwInfo', hubConn.info.firmware || '?', hubConn.info.profile) : '';
 }
 
 $('#btnConnect').addEventListener('click', async () => {
@@ -251,19 +295,19 @@ $('#btnConnect').addEventListener('click', async () => {
   const kind = $('#transportSelect').value || hub().transport[0];
   try {
     const info = await hubConn.connect(kind);
-    termWrite(`✔ ${info.name} 연결 (펌웨어 ${info.firmware || '?'}, 프로파일 ${info.profile})\n`, 'sys');
-    toast(`${info.name} 에 연결했습니다`, 'ok');
+    termWrite(t('msg.connected', info.name, info.firmware || '?', info.profile) + '\n', 'sys');
+    toast(t('msg.connectedToast', info.name), 'ok');
   } catch (e) {
     if (e.name !== 'NotFoundError') {
-      termWrite('✖ 연결 실패: ' + e.message + '\n', 'err');
-      toast('연결 실패: ' + e.message, 'err');
+      termWrite('✖ ' + t('msg.connectFail', e.message) + '\n', 'err');
+      toast(t('msg.connectFail', e.message), 'err');
     }
   }
   setConnUi();
 });
 
 hubConn.addEventListener('disconnect', () => {
-  termWrite('— 허브 연결이 끊어졌습니다\n', 'sys');
+  termWrite(t('msg.disconnected') + '\n', 'sys');
   setConnUi();
 });
 hubConn.addEventListener('status', (e) => {
@@ -279,22 +323,22 @@ hubConn.addEventListener('stdout', (e) => {
 async function run() {
   const src = editToggle.checked ? codeEdit.value : currentCode;
   if (!editToggle.checked && !generatePython(workspace).hasStart) {
-    toast('"▶ 프로그램 시작할 때" 블록이 필요합니다', 'err');
+    toast(t('msg.needStart'), 'err');
     return;
   }
   const bar = $('#progress');
   try {
     $('#btnRun').disabled = true;
-    termWrite('\n▶ 컴파일 중…\n', 'sys');
+    termWrite('\n' + t('msg.compiling') + '\n', 'sys');
     const prog = await buildProgram(src, loadLib);
-    termWrite(`  ${prog.data.length} 바이트 (${prog.modules.join(', ')}) 내려받는 중…\n`, 'sys');
+    termWrite(t('msg.downloading', prog.data.length, prog.modules.join(', ')) + '\n', 'sys');
     bar.hidden = false;
     await hubConn.downloadAndRun(prog.data, (p) => (bar.value = p));
-    termWrite('▶ 실행\n', 'sys');
+    termWrite(t('msg.running') + '\n', 'sys');
   } catch (e) {
     if (e instanceof CompileError) {
-      termWrite(`✖ 파이썬 오류 (${e.module === '__main__' ? '내 프로그램' : e.module})\n${e.message}\n`, 'err');
-      toast('프로그램에 오류가 있습니다 (터미널 확인)', 'err');
+      termWrite(t('msg.pyError', e.module === '__main__' ? t('msg.myProgram') : e.module) + `\n${e.message}\n`, 'err');
+      toast(t('msg.pyErrorToast'), 'err');
     } else {
       termWrite('✖ ' + e.message + '\n', 'err');
       toast(e.message, 'err');
@@ -332,28 +376,28 @@ cam.onUpdate = () => {
   const [hd, g, x, y, f] = cam.hand;
   const [pd, nx, ny, lu, ru, bx, tilt, sp] = cam.body;
   $('#camHand').innerHTML = hd
-    ? `<b>${GESTURE_KO[g]}</b> · X ${x} · Y ${y} · 손가락 ${f}`
-    : cam.mode === 'pose' ? '—' : '손이 안 보여요';
+    ? `<b>${t('g.' + g)}</b> · X ${x} · Y ${y} · ${t('cam.fingers')} ${f}`
+    : cam.mode === 'pose' ? '—' : t('cam.noHand');
   $('#camPose').innerHTML = pd
-    ? `몸 X ${bx} · 코 ${nx},${ny} · 기울기 ${tilt}° ${lu ? '· 왼손↑' : ''} ${ru ? '· 오른손↑' : ''} ${sp ? '· 양팔 벌림' : ''}`
-    : cam.mode === 'hand' ? '—' : '사람이 안 보여요';
+    ? `${t('cam.bodyX')} ${bx} · ${t('cam.nose')} ${nx},${ny} · ${t('cam.tilt')} ${tilt}° ${lu ? '· ' + t('cam.leftUp') : ''} ${ru ? '· ' + t('cam.rightUp') : ''} ${sp ? '· ' + t('cam.spread') : ''}`
+    : cam.mode === 'hand' ? '—' : t('cam.noPerson');
 };
 camBtn.addEventListener('click', async () => {
   if (cam.running) {
     cam.stop();
-    camBtn.textContent = '카메라 켜기';
+    camBtn.textContent = t('cam.on');
     $('#camHint').hidden = false;
     return;
   }
   camBtn.disabled = true;
-  camBtn.textContent = 'AI 모델 불러오는 중…';
+  camBtn.textContent = t('cam.loading');
   try {
     await cam.start($('#camMode').value);
-    camBtn.textContent = '카메라 끄기';
+    camBtn.textContent = t('cam.off');
     $('#camHint').hidden = true;
   } catch (e) {
-    toast('카메라를 시작할 수 없습니다: ' + e.message, 'err');
-    camBtn.textContent = '카메라 켜기';
+    toast(t('msg.camFail', e.message), 'err');
+    camBtn.textContent = t('cam.on');
   }
   camBtn.disabled = false;
 });
@@ -366,8 +410,8 @@ function renderPad() {
   const s = gpad.poll();
   const el = $('#padState');
   if (!s) {
-    el.innerHTML = '<p class="muted">조종기를 USB 또는 블루투스로 이 컴퓨터에 연결하고 아무 버튼이나 누르세요.</p>';
-    $('#padName').textContent = '조종기 없음';
+    el.innerHTML = `<p class="muted">${t('pad.hint')}</p>`;
+    $('#padName').textContent = t('pad.none');
     return;
   }
   $('#padName').textContent = s.id.replace(/\(.*?Vendor.*?\)/, '').trim();
@@ -375,7 +419,7 @@ function renderPad() {
   const stick = (x, y) => `<div class="stick"><i style="left:${50 + x / 2.4}%;top:${50 - y / 2.4}%"></i></div>`;
   el.innerHTML = `
     <div class="sticks">${stick(lx, ly)}${stick(rx, ry)}</div>
-    <div class="nums">왼쪽 ${lx}, ${ly} · 오른쪽 ${rx}, ${ry} · LT ${lt} · RT ${rt}</div>
+    <div class="nums">${t('pad.left')} ${lx}, ${ly} · ${t('pad.right')} ${rx}, ${ry} · LT ${lt} · RT ${rt}</div>
     <div class="btns">${BTN_NAMES.map((n, i) => `<span class="${bits & (1 << i) ? 'on' : ''}">${n}</span>`).join('')}</div>`;
 }
 
@@ -428,3 +472,11 @@ try {
 }
 setConnUi();
 window.addEventListener('resize', () => Blockly.svgResize(workspace));
+initHelp({
+  toast,
+  code: () => (editToggle.checked ? codeEdit.value : currentCode),
+  terminal: () => term.textContent,
+  get hubInfo() {
+    return hubConn.connected ? hubConn.info : null;
+  },
+});

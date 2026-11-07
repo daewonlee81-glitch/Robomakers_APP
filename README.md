@@ -1,4 +1,4 @@
-# 로보메이커스 워드블럭 웹 에디터 (v0.1.3)
+# 로보메이커스 워드블럭 웹 에디터 (v0.2.0)
 
 크롬에서 바로 쓰는 **SPIKE Prime · SPIKE Essential · EV3** 용 워드블럭 코딩 프로그램입니다.
 허브에는 **Pybricks 최신 펌웨어(v4)** 가 설치되어 있어야 하며, 블록은 Pybricks 파이썬 코드로 바뀌어 허브에서 실행됩니다.
@@ -14,6 +14,9 @@
 | 5 | EV3 · Prime · Essential | Prime·Essential = 블루투스(Web Bluetooth), EV3 = USB(WebUSB), Prime USB 는 실험적 |
 | 6 | 허스키렌즈 | `rm_husky.HuskyLens` — husky_spike_esp32 브리지(색 센서 위장)를 Pybricks 에서 읽음. 블록형/라인 추적형 모두 |
 | 7 | Xbox / PS 조종기 | `rm_pad.Gamepad` — ① 웹 중계(PC에 연결한 Xbox·PS 패드, EV3 포함) ② Xbox 직접 연결(SPIKE) ③ LMS-ESP32 BluePad32 |
+| + | 다국어 | 한국어 · English · 日本語 · 简体中文 · 繁體中文 · Español · ไทย — 블록·메뉴·메시지·예제·사용법·생성 코드 주석까지. 위쪽 언어 선택 (또는 주소 뒤 `?lang=ja`) |
+| + | 다운로드 | ⬇ 다운로드: 파이썬 `.py` / 파이썬 + 허브 라이브러리 `.zip` (Pybricks Code 에서 열기) / 블록 프로젝트 `.json` |
+| + | 사용 방법 팝업 | 처음 접속 때 자동 표시, ❓ 버튼으로 다시 열기, 아무 곳이나 클릭하면 닫힘. 펌웨어 설치(Prime·Essential·EV3), Windows·macOS·크롬북·Linux/안드로이드 설정, 버그 신고(메일 + 신고 내용 복사) |
 | 8 | 안톤 마인드스톰 ESP32 | `rm_esp32.ESP32` — PUPRemote(`pupremote_hub`) 래퍼. 여러 포트 동시 사용, 채널/명령 블록 |
 
 ## 실행 방법 (로컬 웹)
@@ -37,6 +40,13 @@
 3. **▶ 실행** (Ctrl+Enter). 터미널에 `print` 출력과 오류가 보입니다
 4. AI 카메라 / 웹 게임패드는 해당 탭을 켜 두면 **프로그램이 실행 중일 때** 0.08초마다 값을 허브로 보냅니다
 
+
+## 설정 바꾸기
+
+- **버그 신고 연락처·버전**: `js/config.js` 의 `contactEmail`, `contactName`, `version` (GitHub 이슈 주소를 `issuesUrl` 에 넣으면 버튼이 생깁니다)
+- **언어 추가**: `js/lang/en.js` 를 복사해 `js/lang/<코드>.js` 로 번역 → `js/i18n.js` 의 `LANGS` 에 한 줄 추가 → Blockly 기본 메시지(`node_modules/blockly/msg/<코드>.js`)를 `vendor/blockly/msg/` 에 복사
+- 사용 방법 팝업은 버전(0.2 등)이 바뀌면 다시 한 번 자동으로 뜹니다. 주소 뒤에 `?nohelp` 를 붙이면 뜨지 않습니다.
+
 ## 폴더 구조
 
 ```
@@ -54,6 +64,11 @@ js/pybricks.js      Pybricks BLE/USB 프로토콜, 다중 모듈 컴파일·다�
 js/aicam.js         MediaPipe 손·스켈레톤
 js/gamepad.js       Gamepad API (Xbox/PS)
 js/examples.js      예제 6종
+js/i18n.js          다국어 (언어 감지·선택, t() 번역 함수)
+js/lang/*.js        언어별 번역 (en 이 기준, 키 325개)
+js/help.js          사용 방법 팝업 + 버그 신고
+js/config.js        버전·버그 신고 연락처
+js/zip.js           .zip 다운로드
 tests/              검증 도구 (가짜 허브 실행기, 공식 가상 허브 실행기, 브라우저 e2e)
 hublib/             허브로 함께 내려가는 파이썬 모듈 (사용한 것만 자동 포함)
   rm_link.py        웹 → 허브 데이터 수신 (stdin 한 줄 프레임)
@@ -63,7 +78,7 @@ hublib/             허브로 함께 내려가는 파이썬 모듈 (사용한 �
   rm_esp32.py       LMS-ESP32 (PUPRemote 래퍼)
   pupremote_hub.py  Anton's Mindstorms 원본 (GPL-3.0)
   bluepad.py        Anton's Mindstorms 원본 (GPL-3.0)
-vendor/             Blockly 11 (Apache-2.0), mpy-cross v6 WASM (MIT)
+vendor/             Blockly 11 + 기본 메시지 7개 언어 (Apache-2.0), mpy-cross v6 WASM (MIT)
 ```
 
 ## 동작 원리

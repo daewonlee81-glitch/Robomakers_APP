@@ -20,7 +20,7 @@ export const HUBS = {
     label: 'SPIKE Essential',
     cls: 'EssentialHub',
     devices: 'pybricks.pupdevices',
-    transport: ['ble'],
+    transport: ['ble', 'usb'],
     motorPorts: ['A', 'B'],
     sensorPorts: ['A', 'B'],
     sensors: ['color', 'ultrasonic', 'force'],

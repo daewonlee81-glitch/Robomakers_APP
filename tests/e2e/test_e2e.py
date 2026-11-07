@@ -1,7 +1,7 @@
 import asyncio, os, json
 from playwright.async_api import async_playwright
 FAKE = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fakehub.js')).read()
-URL = os.environ.get('URL', 'http://localhost:8765/index.html')
+URL = os.environ.get('URL', 'http://localhost:8765/index.html') + '?lang=ko&nohelp'
 CHROME = os.environ.get('CHROME')
 async def main():
     async with async_playwright() as p:

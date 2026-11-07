@@ -10,7 +10,7 @@ export const GESTURE_IDS = {
   None: 0, Closed_Fist: 1, Open_Palm: 2, Pointing_Up: 3,
   Thumb_Down: 4, Thumb_Up: 5, Victory: 6, ILoveYou: 7,
 };
-export const GESTURE_KO = ['없음', '✊ 주먹', '✋ 손바닥', '☝ 검지 위', '👎 엄지 아래', '👍 엄지 위', '✌ 브이', '🤟 사랑해'];
+// 화면 표시용 이름은 언어 파일의 g.0 ~ g.7
 
 const pct = (v) => Math.max(0, Math.min(100, Math.round(v * 100)));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

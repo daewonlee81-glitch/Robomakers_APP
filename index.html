@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>로보메이커스 워드블럭 — SPIKE · EV3 Pybricks 코딩</title>
+<title>RoboMakers WordBlock</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/logo.png">
 <meta name="theme-color" content="#2E6ABF">
@@ -13,67 +13,81 @@
 <script src="vendor/blockly/blockly_compressed.js"></script>
 <script src="vendor/blockly/blocks_compressed.js"></script>
 <script src="vendor/blockly/python_compressed.js"></script>
-<script src="vendor/blockly/ko.js"></script>
 <script src="vendor/mpy-cross/mpy-cross-v6.js"></script>
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <img src="img/logo.png" width="34" height="34" alt="로보메이커스 로고">
-    <div><strong>로보메이커스</strong><span>워드블럭</span></div>
+    <img src="img/logo.png" width="34" height="34" alt="" data-i18n-alt="brand.logoAlt">
+    <div><strong data-i18n="brand.name"></strong><span data-i18n="brand.sub"></span></div>
   </div>
 
   <div class="group">
-    <select id="hubSelect" title="허브 종류">
+    <select id="hubSelect" data-i18n-title="top.hub">
       <option value="prime">SPIKE Prime</option>
       <option value="essential">SPIKE Essential</option>
       <option value="ev3">EV3</option>
     </select>
-    <select id="transportSelect" title="연결 방식"></select>
-    <button id="btnConnect" class="btn-connect">허브 연결</button>
-    <span class="hubinfo"><i id="hubStatus" class="dot"></i><span id="hubName">연결 안 됨</span></span>
+    <select id="transportSelect" data-i18n-title="top.transport"></select>
+    <button id="btnConnect" class="btn-connect" data-i18n="top.connect"></button>
+    <span class="hubinfo"><i id="hubStatus" class="dot"></i><span id="hubName" data-i18n="top.notConnected"></span></span>
   </div>
 
   <div class="group run">
-    <button id="btnRun" class="btn-run" disabled title="실행 (Ctrl+Enter)">▶ 실행</button>
-    <button id="btnStop" class="btn-stop" disabled title="정지">■ 정지</button>
+    <button id="btnRun" class="btn-run" disabled data-i18n="top.run" data-i18n-title="top.runTitle"></button>
+    <button id="btnStop" class="btn-stop" disabled data-i18n="top.stop" data-i18n-title="top.stopTitle"></button>
     <progress id="progress" max="1" value="0" hidden></progress>
   </div>
 
   <div class="group right">
-    <input id="projectName" value="내프로젝트" aria-label="프로젝트 이름">
+    <input id="projectName" data-i18n-value="top.projectDefault" data-i18n-title="top.project">
     <div class="menuwrap">
-      <button id="btnExamples">예제 ▾</button>
+      <button id="btnExamples" data-i18n="top.examples"></button>
       <div id="exampleMenu" class="menu" hidden></div>
     </div>
-    <button id="btnNew" title="새 프로그램">새로</button>
-    <button id="btnOpen" title="프로젝트 열기">열기</button>
-    <button id="btnSave" title="프로젝트 저장">저장</button>
-    <button id="btnPanel" title="오른쪽 패널 접기/펴기">⇥</button>
+    <div class="menuwrap">
+      <button id="btnFile" data-i18n="top.file"></button>
+      <div id="fileMenu" class="menu" hidden>
+        <button id="btnNew" data-i18n="top.newTitle"></button>
+        <button id="btnOpen" data-i18n="top.openTitle"></button>
+        <button id="btnSave" data-i18n="top.saveTitle"></button>
+      </div>
+    </div>
+    <div class="menuwrap">
+      <button id="btnDownload" class="btn-download" data-i18n="top.download" data-i18n-title="top.downloadTitle"></button>
+      <div id="downloadMenu" class="menu" hidden>
+        <button data-dl="py"><b data-i18n="dl.py"></b><small data-i18n="dl.pyDesc"></small></button>
+        <button data-dl="zip"><b data-i18n="dl.zip"></b><small data-i18n="dl.zipDesc"></small></button>
+        <button data-dl="project"><b data-i18n="dl.project"></b><small data-i18n="dl.projectDesc"></small></button>
+      </div>
+    </div>
+    <select id="langSelect" class="lang" data-i18n-title="top.lang"></select>
+    <button id="btnHelp" class="btn-help" data-i18n-title="help.btn" aria-label="?">?</button>
+    <button id="btnPanel" data-i18n-title="top.panel">⇥</button>
     <input type="file" id="fileInput" accept=".json" hidden>
   </div>
 </header>
 
-<div id="browserWarn" class="warn" hidden>이 브라우저는 Web Bluetooth/WebUSB 를 지원하지 않습니다. 허브에 연결하려면 <b>크롬(Chrome)</b> 또는 엣지를 사용하세요. 블록 코딩과 파이썬 보기는 그대로 쓸 수 있습니다.</div>
+<div id="browserWarn" class="warn" hidden data-i18n="warn.browser"></div>
 
 <main>
   <div id="blocklyDiv"></div>
 
   <aside class="panel">
     <nav class="tabs">
-      <button class="tab active" data-pane="panePython">파이썬</button>
-      <button class="tab" data-pane="paneCam">AI 카메라</button>
-      <button class="tab" data-pane="panePad">게임패드</button>
+      <button class="tab active" data-pane="panePython" data-i18n="tab.python"></button>
+      <button class="tab" data-pane="paneCam" data-i18n="tab.cam"></button>
+      <button class="tab" data-pane="panePad" data-i18n="tab.pad"></button>
     </nav>
 
     <section id="panePython" class="pane">
       <div class="pane-tools">
-        <label class="switch"><input type="checkbox" id="editToggle"> 직접 편집</label>
+        <label class="switch"><input type="checkbox" id="editToggle"> <span data-i18n="py.edit"></span></label>
         <span class="spacer"></span>
-        <button id="btnCopyPy">복사</button>
-        <button id="btnExportPy">.py 저장</button>
+        <button id="btnCopyPy" data-i18n="py.copy"></button>
+        <button id="btnExportPy" data-i18n="py.save"></button>
       </div>
-      <p id="editNote" class="note" hidden>편집 모드: 실행하면 이 코드가 허브로 갑니다. 끄면 블록에서 만든 코드로 돌아갑니다.</p>
+      <p id="editNote" class="note" hidden data-i18n="py.editNote"></p>
       <pre id="codeView" class="code"></pre>
       <textarea id="codeEdit" class="code" spellcheck="false" hidden></textarea>
     </section>
@@ -81,48 +95,44 @@
     <section id="paneCam" class="pane" hidden>
       <div class="pane-tools">
         <select id="camMode">
-          <option value="hand">손 모양 (제스처)</option>
-          <option value="pose">스켈레톤 (몸 동작)</option>
-          <option value="both">둘 다</option>
+          <option value="hand" data-i18n="cam.mode.hand"></option>
+          <option value="pose" data-i18n="cam.mode.pose"></option>
+          <option value="both" data-i18n="cam.mode.both"></option>
         </select>
         <span class="spacer"></span>
-        <button id="btnCam" class="primary">카메라 켜기</button>
+        <button id="btnCam" class="primary" data-i18n="cam.on"></button>
       </div>
       <div class="cam">
         <video id="camVideo" playsinline muted></video>
         <canvas id="camCanvas"></canvas>
-        <div id="camHint" class="cam-hint">카메라를 켜면 손과 몸의 뼈대(스켈레톤)를 인식해<br>실행 중인 허브 프로그램으로 값을 보냅니다.</div>
+        <div id="camHint" class="cam-hint" data-i18n="cam.hint"></div>
       </div>
       <div class="readout">
-        <div><small>손</small><span id="camHand">—</span></div>
-        <div><small>스켈레톤</small><span id="camPose">—</span></div>
+        <div><small data-i18n="cam.hand"></small><span id="camHand">—</span></div>
+        <div><small data-i18n="cam.pose"></small><span id="camPose">—</span></div>
       </div>
-      <p class="note">AI 계산은 이 컴퓨터 안에서만 이루어지고 영상은 어디에도 보내지 않습니다. 허브에는 숫자만 전달됩니다.</p>
+      <p class="note" data-i18n="cam.privacy"></p>
     </section>
 
     <section id="panePad" class="pane" hidden>
       <div class="pane-tools">
-        <span id="padName" class="muted">조종기 없음</span>
+        <span id="padName" class="muted" data-i18n="pad.none"></span>
         <span class="spacer"></span>
-        <label class="switch"><input type="checkbox" id="padRelay" checked> 허브로 중계</label>
+        <label class="switch"><input type="checkbox" id="padRelay" checked> <span data-i18n="pad.relay"></span></label>
       </div>
       <div id="padState"></div>
-      <div class="note">
-        <b>세 가지 연결 방식</b> (게임패드 블록의 「연결」에서 선택)<br>
-        ① <b>웹 중계</b> — 이 컴퓨터에 연결한 Xbox·PS 패드를 에디터가 허브로 전달 (모든 허브, EV3 포함)<br>
-        ② <b>Xbox 직접</b> — SPIKE 허브가 Xbox 무선 컨트롤러와 바로 연결 (에디터 없이도 동작)<br>
-        ③ <b>LMS-ESP32 BluePad32</b> — ESP32 가 PS4·PS5·스위치 패드를 받아 허브 포트로 전달
-      </div>
+      <div class="note" data-i18n="pad.help"></div>
     </section>
 
     <div class="termwrap">
-      <div class="termbar"><span>터미널</span><button id="btnClearTerm">지우기</button></div>
+      <div class="termbar"><span data-i18n="term.title"></span><button id="btnClearTerm" data-i18n="term.clear"></button></div>
       <pre id="terminal"></pre>
     </div>
   </aside>
 </main>
 
+<div id="helpModal" class="modal" hidden></div>
 <div id="toast"></div>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

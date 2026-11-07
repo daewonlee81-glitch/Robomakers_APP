@@ -20,26 +20,29 @@ button, select, input { font: inherit; color: inherit; }
 
 /* ── 상단 바 ── */
 .topbar {
-  height: 60px; display: flex; align-items: center; gap: 18px; padding: 0 14px;
+  height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 12px; white-space: nowrap;
   background: var(--card); border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 9px; min-width: 150px; }
+.brand { display: flex; align-items: center; gap: 9px; flex: none; }
 .brand img { display: block; }
 .brand strong { color: var(--brand); display: block; font-size: 15px; letter-spacing: -0.02em; line-height: 1.1; }
 .brand span { font-size: 12px; color: var(--ink-2); font-weight: 600; }
-.group { display: flex; align-items: center; gap: 8px; }
+.group { display: flex; align-items: center; gap: 6px; }
+.topbar button { white-space: nowrap; }
+#hubSelect { width: 150px; }
+#transportSelect { width: 124px; }
 .group.right { margin-left: auto; }
 .topbar button, .topbar select, .topbar input, .pane-tools button, .pane-tools select {
   height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
   background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .topbar button:hover, .pane-tools button:hover { background: #F1F4F9; }
-.topbar input { width: 130px; cursor: text; font-weight: 500; }
+.topbar input { width: 118px; cursor: text; font-weight: 500; }
 #transportSelect:disabled { opacity: 0.6; }
 .btn-connect { background: var(--brand) !important; color: #fff; border-color: var(--brand) !important; }
 .btn-connect:hover { background: var(--brand-dark) !important; }
 .btn-connect.connected { background: #fff !important; color: var(--ink); border-color: var(--line) !important; }
-.hubinfo { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hubinfo { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: #C4CCD9; flex: none; }
 .dot.on { background: var(--green); }
 .dot.running { background: var(--yellow); box-shadow: 0 0 0 4px rgba(255,191,0,.25); }
@@ -55,6 +58,14 @@ progress { width: 90px; height: 8px; accent-color: var(--green); }
   border-radius: 12px; box-shadow: 0 12px 30px rgba(30,42,68,.14); padding: 6px; min-width: 300px;
 }
 .menu button { display: block; width: 100%; text-align: left; border: none !important; height: 38px; }
+#downloadMenu { min-width: 340px; }
+#fileMenu { min-width: 200px; }
+#downloadMenu button { height: auto !important; padding: 9px 12px !important; }
+#downloadMenu b { display: block; font-size: 14px; }
+#downloadMenu small { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); margin-top: 2px; }
+.btn-download { background: #EEF3FB !important; color: var(--brand); border-color: #CFDDF2 !important; }
+.btn-download:hover { background: #E1EAF8 !important; }
+select.lang { width: 104px; }
 .warn { background: #FFF4D6; border-bottom: 1px solid #F3D88A; padding: 8px 16px; font-size: 14px; }
 
 /* ── 본문 ── */
@@ -132,7 +143,43 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .blocklyTreeLabel { font-size: 13.5px !important; font-weight: 700; }
 .blocklyToolboxCategory .blocklyTreeRowContentContainer { gap: 4px; }
 
+@media (max-width: 1500px) {
+  #hubName { display: none; }
+  #projectName { width: 104px; }
+}
+@media (max-width: 1440px) {
+  .brand div { display: none; }
+  .topbar button, .topbar select, .topbar input { padding: 0 9px; }
+}
 @media (max-width: 1100px) {
   :root { --panel-w: 360px; }
   .hubinfo, .brand span, #projectName { display: none; }
+  select.lang { width: 84px; }
 }
+
+/* 사용 방법 팝업 */
+.btn-help { width: 36px; padding: 0 !important; border-radius: 50% !important; font-weight: 800 !important; color: var(--brand); }
+.modal { position: fixed; inset: 0; z-index: 200; background: rgba(20, 30, 52, .55); display: grid; place-items: center; padding: 24px; cursor: pointer; animation: fadein .15s ease; }
+.modal[hidden] { display: none; }
+@keyframes fadein { from { opacity: 0; } }
+.help-card { width: min(760px, 100%); max-height: calc(100vh - 48px); overflow: auto; background: #fff; border-radius: 18px; padding: 22px 26px 20px; box-shadow: 0 24px 60px rgba(20,30,52,.35); cursor: default; font-size: 14px; line-height: 1.65; color: var(--ink); }
+.help-head { display: flex; align-items: center; gap: 12px; }
+.help-head h2 { margin: 0; font-size: 20px; color: var(--brand); letter-spacing: -0.02em; }
+.help-head small { color: var(--ink-2); }
+.help-close { margin: 6px 0 10px; font-size: 12.5px; color: var(--ink-2); }
+.help-card h3 { font-size: 15px; margin: 18px 0 6px; }
+.help-quick { background: #EEF3FB; border-radius: 12px; padding: 4px 16px 6px; }
+.help-quick h3 { margin-top: 10px; }
+.help-card ol, .help-card ul { margin: 4px 0; padding-left: 22px; }
+.help-card details { border: 1px solid var(--line); border-radius: 10px; margin: 6px 0; }
+.help-card summary { cursor: pointer; padding: 9px 12px; font-weight: 700; list-style-position: inside; }
+.help-card summary:hover { background: #F4F6FA; border-radius: 10px; }
+.help-card .hbody { padding: 0 14px 10px; }
+.help-card details .hbody { padding-top: 0; }
+.help-card code { background: #F1F4F9; padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+.help-card kbd { border: 1px solid #C9D3E3; border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 12px; background: #fff; }
+.help-bug { margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.bug-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bug-actions .btn, .bug-actions button { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); }
+.bug-actions .primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.bug-addr { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 0; user-select: all; }
