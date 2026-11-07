@@ -49,9 +49,9 @@ function loadScript(src) {
 export async function initLang() {
   lang = detect();
   const info = LANGS.find((l) => l.code === lang);
-  fallback = (await import('./lang/en.js')).default;
-  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js`)).default;
-  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js`, import.meta.url).href);
+  fallback = (await import('./lang/en.js?v=0.2.1')).default;
+  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js?v=0.2.1`)).default;
+  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js?v=0.2.1`, import.meta.url).href);
   document.documentElement.lang = info.html;
   return lang;
 }

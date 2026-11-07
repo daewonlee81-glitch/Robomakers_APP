@@ -1,8 +1,8 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js';
-import { t } from './i18n.js';
+import { hub } from './hubs.js?v=0.2.1';
+import { t } from './i18n.js?v=0.2.1';
 
 const G = python.pythonGenerator;
 const O = python.Order;

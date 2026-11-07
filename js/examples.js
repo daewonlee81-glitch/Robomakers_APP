@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js';
+import { t } from './i18n.js?v=0.2.1';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });

@@ -1,16 +1,16 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js';
-import { generatePython } from './blocks.js';
-import { buildToolbox } from './toolbox.js';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js';
-import { makeZip } from './zip.js';
-import { initHelp } from './help.js';
-import { AICamera } from './aicam.js';
-import { LANGS, getLang, setLang, t, applyDom } from './i18n.js';
-import { WebGamepad } from './gamepad.js';
-import { EXAMPLES, emptyProgram } from './examples.js';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.2.1';
+import { generatePython } from './blocks.js?v=0.2.1';
+import { buildToolbox } from './toolbox.js?v=0.2.1';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.2.1';
+import { makeZip } from './zip.js?v=0.2.1';
+import { initHelp } from './help.js?v=0.2.1';
+import { AICamera } from './aicam.js?v=0.2.1';
+import { LANGS, getLang, setLang, t, applyDom } from './i18n.js?v=0.2.1';
+import { WebGamepad } from './gamepad.js?v=0.2.1';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.2.1';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -270,7 +270,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.2.1`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
