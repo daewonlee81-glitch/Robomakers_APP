@@ -274,4 +274,13 @@ export default {
   'help.bug.copied': '已复制报告内容，请粘贴到邮件中。',
   'bug.subject': '[积木编程 问题报告] v',
   'bug.intro': '遇到了什么问题？（请写下做了什么、发生了什么）',
+  'top.upload': '下载到主机',
+  'top.uploadTitle': '只把程序保存到主机，不运行（之后用主机按钮运行）',
+  'msg.uploaded': '✔ 已保存到主机{0}',
+  'msg.slot': '插槽 {0}',
+  'msg.uploadedHow.prime': '  不用电脑运行：用左/右按钮选择插槽，再按中间按钮。',
+  'msg.uploadedHow.essential': '  不用电脑运行：按主机按钮。',
+  'msg.uploadedHow.ev3': '  不用电脑运行：在 EV3 屏幕菜单中选择插槽，再按中间按钮。',
+  'help.standalone.title': '📥 不用电脑，在主机上直接运行',
+  'help.standalone.body': '<ul><li>点击 <b>📥 下载到主机</b> 只保存程序、不运行。主机关机后程序仍会保留。</li><li>程序保存在<b>主机上当前选择的插槽</b>。SPIKE Prime 有 5 个，EV3 有 4 个 — 先选好插槽再下载。</li><li><b>SPIKE Prime</b>：左/右按钮选插槽，中间按钮运行。<b>SPIKE Essential</b>：按主机按钮。<b>EV3</b>：在屏幕菜单选插槽后按中间按钮。</li><li>▶ 运行也会先保存到所选插槽，然后立即运行。</li><li>AI 摄像头和网页转发手柄积木需要编辑器发送数值，只有连着电脑时才有效。</li></ul>',
 };

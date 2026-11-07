@@ -273,4 +273,13 @@ export default {
   'help.bug.copied': '신고 내용을 복사했습니다. 메일에 붙여 넣어 주세요.',
   'bug.subject': '[워드블럭 버그 신고] v',
   'bug.intro': '어떤 문제가 있었나요? (무엇을 했을 때 어떻게 되었는지 적어 주세요)',
+  'top.upload': '허브에 다운로드',
+  'top.uploadTitle': '실행하지 않고 허브에 프로그램만 저장 (나중에 허브 버튼으로 실행)',
+  'msg.uploaded': '✔ 허브에 저장했습니다{0}',
+  'msg.slot': '슬롯 {0}',
+  'msg.uploadedHow.prime': '  컴퓨터 없이 실행: 왼쪽/오른쪽 버튼으로 슬롯을 고르고 가운데 버튼을 누르세요.',
+  'msg.uploadedHow.essential': '  컴퓨터 없이 실행: 허브 버튼을 누르세요.',
+  'msg.uploadedHow.ev3': '  컴퓨터 없이 실행: EV3 화면 메뉴에서 슬롯을 고르고 가운데 버튼을 누르세요.',
+  'help.standalone.title': '📥 컴퓨터 없이 허브에서 실행하기',
+  'help.standalone.body': '<ul><li><b>📥 허브에 다운로드</b>를 누르면 실행하지 않고 프로그램만 저장합니다. 허브를 껐다 켜도 남아 있습니다.</li><li>프로그램은 <b>허브에서 고른 슬롯</b>에 저장됩니다. SPIKE Prime 은 5개, EV3 는 4개 — 슬롯을 먼저 고른 뒤 다운로드하세요.</li><li><b>SPIKE Prime</b>: 왼쪽/오른쪽 버튼으로 슬롯 선택, 가운데 버튼으로 실행. <b>SPIKE Essential</b>: 허브 버튼. <b>EV3</b>: 화면 메뉴에서 슬롯을 고르고 가운데 버튼.</li><li>▶ 실행도 고른 슬롯에 저장한 뒤 바로 실행합니다.</li><li>AI 카메라·웹 중계 게임패드 블록은 에디터가 값을 보내야 하므로 컴퓨터가 연결돼 있을 때만 동작합니다.</li></ul>',
 };

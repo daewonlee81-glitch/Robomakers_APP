@@ -2,14 +2,14 @@
 (() => {
   const enc = new TextEncoder();
   const dv = (bytes) => new DataView(new Uint8Array(bytes).buffer);
-  const H = (window.__hub = { ram: new Uint8Array(300000), size: 0, running: false, cmds: [], stdin: '', started: null, notify: null });
-  function status() { const b = new Uint8Array(7); b[0] = 0; new DataView(b.buffer).setUint32(1, H.running ? (1 << 6) : 0, true); return b; }
+  const H = (window.__hub = { ram: new Uint8Array(300000), size: 0, running: false, cmds: [], stdin: '', started: null, notify: null, slot: 2, startLens: [] });
+  function status() { const b = new Uint8Array(7); b[0] = 0; new DataView(b.buffer).setUint32(1, H.running ? (1 << 6) : 0, true); b[6] = H.slot; return b; }
   function handle(b) {
     const c = b[0]; H.cmds.push(c);
     const d = new DataView(b.buffer, b.byteOffset, b.byteLength);
     if (c === 3) H.size = d.getUint32(1, true);
     else if (c === 4) H.ram.set(b.subarray(5), d.getUint32(1, true));
-    else if (c === 1) { H.running = true; H.started = { slot: b[1], size: H.size }; setTimeout(() => { H.notify(status()); H.notify(new Uint8Array([1, ...enc.encode('hello from hub\n')])); }, 30); }
+    else if (c === 1) { H.startLens.push(b.length); H.running = true; H.started = { slot: b[1], size: H.size }; setTimeout(() => { H.notify(status()); H.notify(new Uint8Array([1, ...enc.encode('hello from hub\n')])); }, 30); }
     else if (c === 0) { H.running = false; setTimeout(() => H.notify(status()), 20); }
     else if (c === 6) H.stdin += new TextDecoder().decode(b.subarray(1));
   }

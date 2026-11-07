@@ -274,4 +274,13 @@ export default {
   'help.bug.copied': 'Informe copiado. Pégalo en tu correo.',
   'bug.subject': '[Error en WordBlock] v',
   'bug.intro': '¿Qué salió mal? (¿Qué hiciste y qué pasó?)',
+  'top.upload': 'Descargar al hub',
+  'top.uploadTitle': 'Guardar el programa en el hub sin ejecutarlo (ejecútalo luego con el botón del hub)',
+  'msg.uploaded': '✔ Guardado en el hub{0}',
+  'msg.slot': 'ranura {0}',
+  'msg.uploadedHow.prime': '  Sin computadora: elige la ranura con los botones izquierdo/derecho y pulsa el botón central.',
+  'msg.uploadedHow.essential': '  Sin computadora: pulsa el botón del hub.',
+  'msg.uploadedHow.ev3': '  Sin computadora: elige la ranura en el menú de la pantalla del EV3 y pulsa el botón central.',
+  'help.standalone.title': '📥 Ejecutar programas en el hub sin computadora',
+  'help.standalone.body': '<ul><li>Pulsa <b>📥 Descargar al hub</b> para guardar el programa sin ejecutarlo. Se conserva aunque apagues el hub.</li><li>El programa se guarda en la <b>ranura seleccionada en el hub</b>. SPIKE Prime tiene 5 ranuras y EV3 tiene 4: elige primero la ranura y después descarga.</li><li><b>SPIKE Prime</b>: botones izquierdo/derecho para la ranura, botón central para ejecutar. <b>SPIKE Essential</b>: pulsa el botón del hub. <b>EV3</b>: elige la ranura en el menú y pulsa el botón central.</li><li>▶ Ejecutar también guarda en la ranura seleccionada y la inicia enseguida.</li><li>Los bloques de cámara IA y de mando por reenvío web necesitan el editor, así que solo reciben valores mientras la computadora está conectada.</li></ul>',
 };

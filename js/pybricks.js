@@ -2,7 +2,7 @@
 // 프로토콜 출처: github.com/pybricks/pybricks-code (MIT), Pybricks Profile v1.2 ~ v1.5
 
 /* global MpyCross */
-import { t } from './i18n.js?v=0.2.1';
+import { t } from './i18n.js?v=0.2.2';
 
 export const PYBRICKS_SERVICE = 'c5f50001-8280-46da-89f4-6d8051e4aeef';
 const PYBRICKS_CMD_EVENT = 'c5f50002-8280-46da-89f4-6d8051e4aeef';
@@ -36,7 +36,7 @@ function verGte(v, want) {
 
 // ───────────────────────── 컴파일러 ─────────────────────────
 
-let wasmUrl = new URL('../vendor/mpy-cross/mpy-cross-v6.wasm?v=0.2.1', import.meta.url).href;
+let wasmUrl = new URL('../vendor/mpy-cross/mpy-cross-v6.wasm?v=0.2.2', import.meta.url).href;
 
 /** 파이썬 소스 하나를 .mpy 로 컴파일 */
 export function compileMpy(fileName, source) {
@@ -299,6 +299,7 @@ export class PybricksHub extends EventTarget {
     this.transport = null;
     this.info = null;
     this.status = 0;
+    this.selectedSlot = 0;
     this._queue = Promise.resolve();
     this._stdoutBuf = '';
   }
@@ -344,8 +345,13 @@ export class PybricksHub extends EventTarget {
     const type = dv.getUint8(0);
     if (type === Evt.Status) {
       const prev = this.status;
+      const prevSlot = this.selectedSlot;
       this.status = dv.getUint32(1, true);
-      if (prev !== this.status) this._emit('status', { flags: this.status, running: this.running });
+      // 프로파일 1.5+: 6번째 바이트 = 허브에서 고른 슬롯 (프로그램이 저장·실행되는 곳)
+      this.selectedSlot = dv.byteLength > 6 ? dv.getUint8(6) : 0;
+      if (prev !== this.status || prevSlot !== this.selectedSlot) {
+        this._emit('status', { flags: this.status, running: this.running, slot: this.selectedSlot });
+      }
     } else if (type === Evt.Stdout) {
       const text = dec.decode(new Uint8Array(dv.buffer, dv.byteOffset + 1, dv.byteLength - 1));
       this._emit('stdout', text);
@@ -367,12 +373,18 @@ export class PybricksHub extends EventTarget {
     await this._send(new Uint8Array([Cmd.Stop]));
   }
 
+  /** 허브에 슬롯이 여러 개 있는지 (SPIKE Prime 5개, EV3 4개) */
+  get slotCount() {
+    return this.info?.slots || 0;
+  }
+
   /**
-   * 컴파일된 프로그램을 내려받고 실행합니다.
+   * 컴파일된 프로그램을 허브에 저장만 합니다 (실행하지 않음).
+   * 허브에서 고른 슬롯에 저장되고, 전원을 꺼도 남아 허브 버튼으로 실행할 수 있습니다.
    * @param {Uint8Array} program buildProgram() 결과
    * @param {(p:number)=>void} onProgress
    */
-  async downloadAndRun(program, onProgress = () => {}) {
+  async download(program, onProgress = () => {}) {
     const info = this.info;
     if (info.maxProgram && program.length > info.maxProgram) {
       throw new Error(t('err.tooBig', program.length, info.maxProgram));
@@ -399,11 +411,17 @@ export class PybricksHub extends EventTarget {
       onProgress(Math.min(1, (i + data.length) / program.length));
     }
     await this._send(meta(program.length));
-    if (verGte(info.profile, '1.4.0')) {
-      await this._send(new Uint8Array([Cmd.Start, 0]));
-    } else {
-      await this._send(new Uint8Array([Cmd.Start]));
-    }
+  }
+
+  /** 허브에서 고른 슬롯의 프로그램을 실행합니다 (슬롯 번호를 빼면 펌웨어가 현재 슬롯을 실행). */
+  async start() {
+    await this._send(new Uint8Array([Cmd.Start]));
+  }
+
+  /** 내려받고 바로 실행합니다. */
+  async downloadAndRun(program, onProgress = () => {}) {
+    await this.download(program, onProgress);
+    await this.start();
   }
 
   /** 실행 중인 프로그램의 stdin 으로 문자열을 보냅니다. */

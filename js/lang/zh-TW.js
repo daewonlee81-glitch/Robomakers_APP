@@ -274,4 +274,13 @@ export default {
   'help.bug.copied': '已複製回報內容，請貼上到郵件中。',
   'bug.subject': '[積木程式 問題回報] v',
   'bug.intro': '遇到了什麼問題？（請寫下做了什麼、發生了什麼）',
+  'top.upload': '下載到集線器',
+  'top.uploadTitle': '只把程式存到集線器，不執行（之後用集線器按鈕執行）',
+  'msg.uploaded': '✔ 已存到集線器{0}',
+  'msg.slot': '插槽 {0}',
+  'msg.uploadedHow.prime': '  不用電腦執行：用左/右按鈕選擇插槽，再按中間按鈕。',
+  'msg.uploadedHow.essential': '  不用電腦執行：按集線器按鈕。',
+  'msg.uploadedHow.ev3': '  不用電腦執行：在 EV3 螢幕選單中選擇插槽，再按中間按鈕。',
+  'help.standalone.title': '📥 不用電腦，直接在集線器上執行',
+  'help.standalone.body': '<ul><li>按 <b>📥 下載到集線器</b> 只儲存程式、不執行。集線器關機後程式仍會保留。</li><li>程式會存在<b>集線器目前選擇的插槽</b>。SPIKE Prime 有 5 個，EV3 有 4 個 — 請先選好插槽再下載。</li><li><b>SPIKE Prime</b>：左/右按鈕選插槽，中間按鈕執行。<b>SPIKE Essential</b>：按集線器按鈕。<b>EV3</b>：在螢幕選單選插槽後按中間按鈕。</li><li>▶ 執行也會先存到所選插槽，然後立刻執行。</li><li>AI 攝影機和網頁轉送手把積木需要編輯器傳送數值，只有連著電腦時才有效。</li></ul>',
 };

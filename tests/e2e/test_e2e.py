@@ -25,7 +25,7 @@ async def main():
         await pg.click('#btnExamples'); await pg.click('text=게임패드: 탱크 주행'); await pg.wait_for_timeout(400)
         await pg.click('#btnRun'); await pg.wait_for_timeout(2500)
         h = await pg.evaluate('({cmds: __hub.cmds.join(","), started: __hub.started, running: __hub.running})')
-        ok(h['started'] and h['started']['slot'] == 0, f"다운로드 후 슬롯 0 실행 (명령 순서 {h['cmds'][:30]}…)")
+        ok(h['started'] is not None and h['running'], f"다운로드 후 허브에서 고른 슬롯 실행 (명령 순서 {h['cmds'][:30]}…)")
         # 허브 RAM 을 펌웨어 방식으로 해석
         mods = await pg.evaluate('''() => { const d = __hub.ram.subarray(0, __hub.size); let o = 0; const out = [];
             while (o + 4 < d.length) { const sz = d[o] | d[o+1]<<8 | d[o+2]<<16 | d[o+3]<<24; o += 4; let e = o; while (d[e]) e++;
@@ -54,6 +54,14 @@ async def main():
         await pg.click('#btnCam')
         await pg.click('#btnStop'); await pg.wait_for_timeout(400)
         ok(await pg.evaluate('!__hub.running'), '정지 버튼 → 허브 프로그램 정지')
+        # 허브에 다운로드 (저장만, 실행 안 함)
+        await pg.evaluate('__hub.cmds = []; __hub.started = null')
+        ok('슬롯 3' in (await pg.get_attribute('#btnUpload', 'title') or ''), '허브에 다운로드 버튼에 허브에서 고른 슬롯 표시: ' + (await pg.get_attribute('#btnUpload', 'title')))
+        await pg.click('#btnUpload'); await pg.wait_for_timeout(1500)
+        h = await pg.evaluate('({cmds: __hub.cmds.join(","), started: __hub.started, running: __hub.running, size: __hub.size})')
+        ok(h['started'] is None and not h['running'] and h['cmds'].startswith('3,4') and h['cmds'].endswith('3') and h['size'] > 0, f"허브에 다운로드: 저장만 하고 실행 안 함 (명령 {h['cmds'][:12]}…{h['cmds'][-3:]}, {h['size']}바이트)")
+        t2 = await term(); ok('저장했습니다 (슬롯 3)' in t2 and '가운데 버튼' in t2, '터미널 안내: ' + [l for l in t2.split(chr(10)) if '저장했습니다' in l][-1].strip())
+        ok(await pg.evaluate('__hub.startLens.every(n => n === 1)'), '실행 명령은 슬롯 번호 없이 보냄 → 허브에서 고른 슬롯을 실행')
         n_before = len(await pg.evaluate('__hub.stdin'))
         await pg.wait_for_timeout(500)
         ok(len(await pg.evaluate('__hub.stdin')) == n_before, '정지 후에는 데이터 전송 멈춤')

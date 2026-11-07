@@ -1,16 +1,16 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.2.1';
-import { generatePython } from './blocks.js?v=0.2.1';
-import { buildToolbox } from './toolbox.js?v=0.2.1';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.2.1';
-import { makeZip } from './zip.js?v=0.2.1';
-import { initHelp } from './help.js?v=0.2.1';
-import { AICamera } from './aicam.js?v=0.2.1';
-import { LANGS, getLang, setLang, t, applyDom } from './i18n.js?v=0.2.1';
-import { WebGamepad } from './gamepad.js?v=0.2.1';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.2.1';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.2.2';
+import { generatePython } from './blocks.js?v=0.2.2';
+import { buildToolbox } from './toolbox.js?v=0.2.2';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.2.2';
+import { makeZip } from './zip.js?v=0.2.2';
+import { initHelp } from './help.js?v=0.2.2';
+import { AICamera } from './aicam.js?v=0.2.2';
+import { LANGS, getLang, setLang, t, applyDom } from './i18n.js?v=0.2.2';
+import { WebGamepad } from './gamepad.js?v=0.2.2';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.2.2';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -270,7 +270,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.2.1`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.2.2`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -280,7 +280,9 @@ function setConnUi() {
   $('#btnConnect').textContent = c ? t('top.disconnect') : t('top.connect');
   $('#btnConnect').classList.toggle('connected', c);
   $('#btnRun').disabled = !c;
+  $('#btnUpload').disabled = !c;
   $('#btnStop').disabled = !c;
+  $('#btnUpload').title = t('top.uploadTitle') + (c && hubConn.slotCount > 1 ? ' — ' + t('msg.slot', hubConn.selectedSlot + 1) : '');
   $('#hubStatus').className = 'dot ' + (c ? (hubConn.running ? 'running' : 'on') : '');
   $('#hubName').textContent = c ? `${hubConn.info.name}` : t('top.notConnected');
   $('#hubName').title = c ? t('msg.fwInfo', hubConn.info.firmware || '?', hubConn.info.profile) : '';
@@ -320,7 +322,11 @@ hubConn.addEventListener('stdout', (e) => {
   stdoutLine = e.detail.split('\n').pop();
 });
 
-async function run() {
+/**
+ * 컴파일해서 허브로 보냅니다.
+ * @param {boolean} andRun true = 내려받고 실행, false = 허브에 저장만 (허브 버튼으로 실행)
+ */
+async function sendToHub(andRun) {
   const src = editToggle.checked ? codeEdit.value : currentCode;
   if (!editToggle.checked && !generatePython(workspace).hasStart) {
     toast(t('msg.needStart'), 'err');
@@ -329,12 +335,20 @@ async function run() {
   const bar = $('#progress');
   try {
     $('#btnRun').disabled = true;
+    $('#btnUpload').disabled = true;
     termWrite('\n' + t('msg.compiling') + '\n', 'sys');
     const prog = await buildProgram(src, loadLib);
     termWrite(t('msg.downloading', prog.data.length, prog.modules.join(', ')) + '\n', 'sys');
     bar.hidden = false;
-    await hubConn.downloadAndRun(prog.data, (p) => (bar.value = p));
-    termWrite(t('msg.running') + '\n', 'sys');
+    if (andRun) {
+      await hubConn.downloadAndRun(prog.data, (p) => (bar.value = p));
+      termWrite(t('msg.running') + '\n', 'sys');
+    } else {
+      await hubConn.download(prog.data, (p) => (bar.value = p));
+      const slot = hubConn.slotCount > 1 ? ' (' + t('msg.slot', hubConn.selectedSlot + 1) + ')' : '';
+      termWrite(t('msg.uploaded', slot) + '\n' + t('msg.uploadedHow.' + getHubKey()) + '\n', 'sys');
+      toast(t('msg.uploaded', slot), 'ok');
+    }
   } catch (e) {
     if (e instanceof CompileError) {
       termWrite(t('msg.pyError', e.module === '__main__' ? t('msg.myProgram') : e.module) + `\n${e.message}\n`, 'err');
@@ -349,7 +363,9 @@ async function run() {
     setConnUi();
   }
 }
+const run = () => sendToHub(true);
 $('#btnRun').addEventListener('click', run);
+$('#btnUpload').addEventListener('click', () => sendToHub(false));
 $('#btnStop').addEventListener('click', () => hubConn.stop().catch((e) => toast(e.message, 'err')));
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && hubConn.connected) run();

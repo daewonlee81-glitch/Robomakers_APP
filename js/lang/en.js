@@ -273,4 +273,13 @@ export default {
   'help.bug.copied': 'Report copied. Paste it into your email.',
   'bug.subject': '[WordBlock bug report] v',
   'bug.intro': 'What went wrong? (What did you do, and what happened?)',
+  'top.upload': 'Download to hub',
+  'top.uploadTitle': 'Save the program on the hub without running it (run later with the hub button)',
+  'msg.uploaded': '✔ Saved on the hub{0}',
+  'msg.slot': 'slot {0}',
+  'msg.uploadedHow.prime': '  Without a computer: choose the slot with the left/right buttons, then press the center button to run.',
+  'msg.uploadedHow.essential': '  Without a computer: press the hub button to run.',
+  'msg.uploadedHow.ev3': '  Without a computer: choose the slot in the EV3 screen menu, then press the center button to run.',
+  'help.standalone.title': '📥 Run programs on the hub without a computer',
+  'help.standalone.body': '<ul><li>Press <b>📥 Download to hub</b> to save the program without running it. It stays on the hub after you turn it off.</li><li>The program is saved in the <b>slot selected on the hub</b>. SPIKE Prime has 5 slots and EV3 has 4 — pick the slot first, then download.</li><li><b>SPIKE Prime</b>: left/right buttons choose the slot, center button runs. <b>SPIKE Essential</b>: press the hub button. <b>EV3</b>: choose the slot in the screen menu and press the center button.</li><li>▶ Run also saves to the selected slot, then starts it right away.</li><li>AI camera and web-relay gamepad blocks need the editor, so they only get values while the computer is connected.</li></ul>',
 };

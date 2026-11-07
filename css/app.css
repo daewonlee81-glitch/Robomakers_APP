@@ -50,6 +50,9 @@ button, select, input { font: inherit; color: inherit; }
 .btn-run { background: var(--green) !important; }
 .btn-run.running { box-shadow: 0 0 0 4px rgba(45,181,93,.25); }
 .btn-stop { background: var(--red) !important; }
+.btn-upload { background: #fff !important; color: var(--brand); border: 1.5px solid var(--brand) !important; font-weight: 700 !important; }
+.btn-upload .ico { margin-right: 4px; }
+.btn-upload:disabled { color: #9AA6BA; border-color: #C9D1DD !important; cursor: not-allowed; }
 .btn-run:disabled, .btn-stop:disabled { background: #C9D1DD !important; cursor: not-allowed; }
 progress { width: 90px; height: 8px; accent-color: var(--green); }
 .menuwrap { position: relative; }
@@ -147,9 +150,19 @@ textarea.code:focus { outline: 2px solid var(--brand); }
   #hubName { display: none; }
   #projectName { width: 104px; }
 }
-@media (max-width: 1440px) {
+@media (max-width: 1679px) {
   .brand div { display: none; }
+  .btn-upload .lbl { display: none; }
+  .btn-upload .ico { margin: 0; }
+}
+@media (max-width: 1440px) {
   .topbar button, .topbar select, .topbar input { padding: 0 9px; }
+}
+@media (max-width: 1300px) {
+  #projectName { width: 80px; }
+  select.lang { width: 84px; }
+  #transportSelect { width: 108px; }
+  #hubSelect { width: 134px; }
 }
 @media (max-width: 1100px) {
   :root { --panel-w: 360px; }
