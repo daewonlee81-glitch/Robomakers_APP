@@ -1,0 +1,540 @@
+// blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
+/* global Blockly, python */
+
+import { hub } from './hubs.js';
+
+const G = python.pythonGenerator;
+const O = python.Order;
+G.INDENT = '    ';
+
+// 한글 변수·함수 이름을 그대로 씁니다 (MicroPython 은 유니코드 식별자를 지원).
+Blockly.Names.prototype.safeName = function (name) {
+  if (!name) return 'unnamed';
+  let n = String(name).trim().replace(/[^\p{L}\p{N}_]/gu, '_');
+  if (/^\p{N}/u.test(n)) n = 'my_' + n;
+  return n;
+};
+
+// ───────────────────────── 색 (SPIKE 앱 느낌) ─────────────────────────
+export const C = {
+  event: '#FFBF00',
+  motor: '#0090F5',
+  drive: '#FF4CCD',
+  sensor: '#2BB5D6',
+  hub: '#9966FF',
+  sound: '#CF63CF',
+  control: '#FFAB19',
+  ai: '#00A88F',
+  pad: '#4C5866',
+  husky: '#E6553A',
+  esp: '#3D7A3A',
+  text: '#5CB1D6',
+};
+
+// ───────────────────────── 드롭다운 옵션 ─────────────────────────
+const motorPorts = () => hub().motorPorts.map((p) => [p, p]);
+const sensorPorts = () => hub().sensorPorts.map((p) => [p, p]);
+const lpfPorts = () => (hub().lpf2 ? hub().sensorPorts : ['A']).map((p) => [p, p]);
+const COLORS = [
+  ['빨강', 'RED'], ['주황', 'ORANGE'], ['노랑', 'YELLOW'], ['초록', 'GREEN'],
+  ['하늘', 'CYAN'], ['파랑', 'BLUE'], ['보라', 'VIOLET'], ['자홍', 'MAGENTA'],
+  ['흰색', 'WHITE'], ['검정', 'BLACK'], ['갈색', 'BROWN'], ['없음', 'NONE'],
+];
+const ICONS = [
+  ['😊 웃음', 'HAPPY'], ['☹ 슬픔', 'SAD'], ['♥ 하트', 'HEART'], ['⬆ 위', 'ARROW_UP'],
+  ['⬇ 아래', 'ARROW_DOWN'], ['⬅ 왼쪽', 'ARROW_LEFT'], ['➡ 오른쪽', 'ARROW_RIGHT'],
+  ['■ 네모', 'SQUARE'], ['● 원', 'CIRCLE'], ['✔ 참', 'TRUE'], ['✖ 거짓', 'FALSE'], ['꽉 참', 'FULL'],
+];
+const hubButtons = () => (hub().buttons.length ? hub().buttons : [['(없음)', 'NONE']]);
+const padSources = () => {
+  const o = [['웹 중계 (PC에 연결한 Xbox·PS 패드)', 'web']];
+  if (hub().xbox) o.push(['Xbox 무선 직접 연결', 'xbox']);
+  if (hub().lpf2) o.push(['LMS-ESP32 BluePad32 (PS·Xbox·스위치)', 'esp32']);
+  return o;
+};
+
+const dd = (name, options) => ({ type: 'field_dropdown', name, options });
+const num = (name, check = 'Number') => ({ type: 'input_value', name, check });
+
+// ───────────────────────── 블록 정의 헬퍼 ─────────────────────────
+function def(type, colour, message0, args0, kind, extra = {}) {
+  const json = { type, message0, args0, colour, inputsInline: true, ...extra };
+  if (kind === 'stmt') {
+    json.previousStatement = null;
+    json.nextStatement = null;
+  } else if (kind === 'num') {
+    json.output = 'Number';
+  } else if (kind === 'bool') {
+    json.output = 'Boolean';
+  } else if (kind === 'any') {
+    json.output = null;
+  } else if (kind === 'hat') {
+    json.nextStatement = null;
+  }
+  Blockly.Blocks[type] = {
+    init() {
+      this.jsonInit(json);
+    },
+  };
+}
+
+// ───────────────────────── 생성기 헬퍼 ─────────────────────────
+function imp(mod, name) {
+  if (!G.rmImports_.has(mod)) G.rmImports_.set(mod, new Set());
+  if (name) G.rmImports_.get(mod).add(name);
+}
+function impModule(mod) {
+  G.rmPlainImports_.add(mod);
+}
+function setup(key, line, force = false) {
+  if (force || !G.rmSetup_.has(key)) G.rmSetup_.set(key, line);
+}
+function port(p) {
+  imp('pybricks.parameters', 'Port');
+  return `Port.${p}`;
+}
+function hubObj() {
+  const h = hub();
+  imp('pybricks.hubs', h.cls);
+  setup('hub', `hub = ${h.cls}()`);
+  return 'hub';
+}
+function waitImp() {
+  imp('pybricks.tools', 'wait');
+  return 'wait';
+}
+function motor(p) {
+  imp(hub().devices, 'Motor');
+  setup('motor_' + p, `motor_${p} = Motor(${port(p)})`);
+  return 'motor_' + p;
+}
+const SENSOR_CLASS = {
+  color: ['ColorSensor', 'color'],
+  ultrasonic: ['UltrasonicSensor', 'ultra'],
+  force: ['ForceSensor', 'force'],
+  ev3color: ['ColorSensor', 'color'],
+  ev3ultrasonic: ['UltrasonicSensor', 'ultra'],
+  touch: ['TouchSensor', 'touch'],
+  gyro: ['GyroSensor', 'gyro'],
+};
+function sensor(kind, p) {
+  const [cls, prefix] = SENSOR_CLASS[kind];
+  imp(hub().devices, cls);
+  const v = `${prefix}_${p}`;
+  setup(v, `${v} = ${cls}(${port(p)})`);
+  return v;
+}
+function val(block, name, order = O.NONE, dflt = '0') {
+  return G.valueToCode(block, name, order) || dflt;
+}
+function isNum(code) {
+  return /^-?\d+(\.\d+)?$/.test(code);
+}
+function times(code, k) {
+  if (isNum(code)) return String(+(parseFloat(code) * k).toFixed(3));
+  return `${code} * ${k}`;
+}
+function str(s) {
+  return G.quote_(String(s));
+}
+function pad() {
+  imp('rm_pad', 'Gamepad');
+  setup('pad', 'pad = Gamepad("web")');
+  return 'pad';
+}
+
+// ════════════════════════ 이벤트 ════════════════════════
+def('rm_start', C.event, '▶ 프로그램 시작할 때', [], 'hat', { tooltip: '실행 버튼을 누르면 여기 아래 블록이 순서대로 실행됩니다.' });
+G.forBlock['rm_start'] = () => '';
+
+// ════════════════════════ 모터 ════════════════════════
+def('rm_motor_setup', C.motor, '모터 %1 방향을 %2 로 설정',
+  [dd('PORT', motorPorts), dd('DIR', [['시계 방향', 'CLOCKWISE'], ['반시계 방향', 'COUNTERCLOCKWISE']])], 'stmt',
+  { tooltip: '모터가 + 속도일 때 도는 방향을 정합니다.' });
+G.forBlock['rm_motor_setup'] = (b) => {
+  const p = b.getFieldValue('PORT');
+  imp(hub().devices, 'Motor');
+  imp('pybricks.parameters', 'Direction');
+  setup('motor_' + p, `motor_${p} = Motor(${port(p)}, Direction.${b.getFieldValue('DIR')})`, true);
+  return '';
+};
+
+def('rm_motor_run', C.motor, '모터 %1 을 %2 % 속도로 계속 돌리기', [dd('PORT', motorPorts), num('SPEED')], 'stmt',
+  { tooltip: '속도 100% = 초당 1000도' });
+G.forBlock['rm_motor_run'] = (b) => `${motor(b.getFieldValue('PORT'))}.run(${times(val(b, 'SPEED', O.MULTIPLICATIVE, '50'), 10)})\n`;
+
+def('rm_motor_power', C.motor, '모터 %1 을 %2 % 힘(파워)으로 돌리기', [dd('PORT', motorPorts), num('POWER')], 'stmt',
+  { tooltip: '속도 제어 없이 전압 비율(-100~100)로 돌립니다. 조종기와 잘 맞습니다.' });
+G.forBlock['rm_motor_power'] = (b) => `${motor(b.getFieldValue('PORT'))}.dc(${val(b, 'POWER', O.NONE, '50')})\n`;
+
+def('rm_motor_run_for', C.motor, '모터 %1 을 %2 % 속도로 %3 %4 돌리기 %5',
+  [dd('PORT', motorPorts), num('SPEED'), num('AMOUNT'),
+    dd('UNIT', [['도', 'deg'], ['바퀴', 'rot'], ['초', 'sec']]),
+    dd('WAIT', [['(끝날 때까지 기다림)', 'True'], ['(바로 다음 블록)', 'False']])], 'stmt');
+G.forBlock['rm_motor_run_for'] = (b) => {
+  const m = motor(b.getFieldValue('PORT'));
+  const s = times(val(b, 'SPEED', O.MULTIPLICATIVE, '50'), 10);
+  const a = val(b, 'AMOUNT', O.MULTIPLICATIVE, '360');
+  const w = b.getFieldValue('WAIT');
+  switch (b.getFieldValue('UNIT')) {
+    case 'rot': return `${m}.run_angle(${s}, ${times(a, 360)}, wait=${w})\n`;
+    case 'sec': return `${m}.run_time(${s}, ${times(a, 1000)}, wait=${w})\n`;
+    default: return `${m}.run_angle(${s}, ${a}, wait=${w})\n`;
+  }
+};
+
+def('rm_motor_target', C.motor, '모터 %1 을 %2 % 속도로 %3 도 위치로 이동', [dd('PORT', motorPorts), num('SPEED'), num('ANGLE')], 'stmt');
+G.forBlock['rm_motor_target'] = (b) =>
+  `${motor(b.getFieldValue('PORT'))}.run_target(${times(val(b, 'SPEED', O.MULTIPLICATIVE, '50'), 10)}, ${val(b, 'ANGLE', O.NONE, '0')})\n`;
+
+def('rm_motor_stop', C.motor, '모터 %1 %2', [dd('PORT', motorPorts),
+  dd('MODE', [['멈추기 (천천히)', 'stop'], ['브레이크', 'brake'], ['위치 고정', 'hold']])], 'stmt');
+G.forBlock['rm_motor_stop'] = (b) => `${motor(b.getFieldValue('PORT'))}.${b.getFieldValue('MODE')}()\n`;
+
+def('rm_motor_reset', C.motor, '모터 %1 각도를 0 으로 초기화', [dd('PORT', motorPorts)], 'stmt');
+G.forBlock['rm_motor_reset'] = (b) => `${motor(b.getFieldValue('PORT'))}.reset_angle(0)\n`;
+
+def('rm_motor_value', C.motor, '모터 %1 %2', [dd('PORT', motorPorts), dd('WHAT', [['각도(도)', 'angle'], ['속도(도/초)', 'speed']])], 'num');
+G.forBlock['rm_motor_value'] = (b) => [`${motor(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+// ════════════════════════ 주행 (DriveBase) ════════════════════════
+def('rm_drive_setup', C.drive, '주행 설정 왼쪽 %1 오른쪽 %2 바퀴 %3 mm 간격 %4 mm 자이로 %5',
+  [dd('L', motorPorts), dd('R', motorPorts), { type: 'field_number', name: 'WD', value: 56, min: 1 },
+    { type: 'field_number', name: 'AT', value: 112, min: 1 }, { type: 'field_checkbox', name: 'GYRO', checked: false }], 'stmt',
+  { tooltip: 'SPIKE 기본 바퀴 지름 56mm. 자이로는 Prime/Essential 에서만 사용할 수 있습니다.' });
+G.forBlock['rm_drive_setup'] = (b) => {
+  const L = b.getFieldValue('L');
+  const R = b.getFieldValue('R');
+  imp(hub().devices, 'Motor');
+  imp('pybricks.parameters', 'Direction');
+  imp('pybricks.robotics', 'DriveBase');
+  setup('motor_' + L, `motor_${L} = Motor(${port(L)}, Direction.COUNTERCLOCKWISE)`, true);
+  setup('motor_' + R, `motor_${R} = Motor(${port(R)}, Direction.CLOCKWISE)`, true);
+  setup('drive', `drive_base = DriveBase(motor_${L}, motor_${R}, wheel_diameter=${b.getFieldValue('WD')}, axle_track=${b.getFieldValue('AT')})`, true);
+  if (b.getFieldValue('GYRO') === 'TRUE' && hub().imu) return 'drive_base.use_gyro(True)\n';
+  return '';
+};
+const driveBase = () => {
+  if (!G.rmSetup_.has('drive')) {
+    const ports = hub().motorPorts;
+    const L = ports[0];
+    const R = ports[1];
+    imp(hub().devices, 'Motor');
+    imp('pybricks.parameters', 'Direction');
+    imp('pybricks.robotics', 'DriveBase');
+    setup('motor_' + L, `motor_${L} = Motor(${port(L)}, Direction.COUNTERCLOCKWISE)`, true);
+    setup('motor_' + R, `motor_${R} = Motor(${port(R)}, Direction.CLOCKWISE)`, true);
+    setup('drive', `drive_base = DriveBase(motor_${L}, motor_${R}, wheel_diameter=56, axle_track=112)`);
+  }
+  return 'drive_base';
+};
+
+def('rm_drive_straight', C.drive, '%1 mm 앞으로 가기 (뒤로는 -)', [num('DIST')], 'stmt');
+G.forBlock['rm_drive_straight'] = (b) => `${driveBase()}.straight(${val(b, 'DIST', O.NONE, '100')})\n`;
+
+def('rm_drive_turn', C.drive, '%1 도 회전하기 (오른쪽 +, 왼쪽 -)', [num('ANGLE')], 'stmt');
+G.forBlock['rm_drive_turn'] = (b) => `${driveBase()}.turn(${val(b, 'ANGLE', O.NONE, '90')})\n`;
+
+def('rm_drive_drive', C.drive, '속도 %1 mm/초, 회전 %2 도/초로 계속 주행', [num('SPEED'), num('TURN')], 'stmt');
+G.forBlock['rm_drive_drive'] = (b) => `${driveBase()}.drive(${val(b, 'SPEED', O.NONE, '150')}, ${val(b, 'TURN', O.NONE, '0')})\n`;
+
+def('rm_drive_stop', C.drive, '주행 멈추기', [], 'stmt');
+G.forBlock['rm_drive_stop'] = () => `${driveBase()}.stop()\n`;
+
+def('rm_drive_settings', C.drive, '주행 속도 %1 mm/초, 회전 속도 %2 도/초로 정하기', [num('SPEED'), num('TURN')], 'stmt');
+G.forBlock['rm_drive_settings'] = (b) =>
+  `${driveBase()}.settings(straight_speed=${val(b, 'SPEED', O.NONE, '200')}, turn_rate=${val(b, 'TURN', O.NONE, '150')})\n`;
+
+def('rm_drive_value', C.drive, '주행 %1', [dd('WHAT', [['이동 거리(mm)', 'distance'], ['회전 각도(도)', 'angle']])], 'num');
+G.forBlock['rm_drive_value'] = (b) => [`${driveBase()}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+def('rm_drive_reset', C.drive, '주행 거리·각도 초기화', [], 'stmt');
+G.forBlock['rm_drive_reset'] = () => `${driveBase()}.reset()\n`;
+
+// ════════════════════════ 센서 ════════════════════════
+def('rm_color_is', C.sensor, '컬러 센서 %1 색이 %2 인가?', [dd('PORT', sensorPorts), dd('COLOR', COLORS)], 'bool');
+G.forBlock['rm_color_is'] = (b) => {
+  const s = sensor(hub().devices.includes('ev3') ? 'ev3color' : 'color', b.getFieldValue('PORT'));
+  imp('pybricks.parameters', 'Color');
+  return [`${s}.color() == Color.${b.getFieldValue('COLOR')}`, O.RELATIONAL];
+};
+
+def('rm_color_value', C.sensor, '컬러 센서 %1 %2', [dd('PORT', sensorPorts),
+  dd('WHAT', [['반사광(%)', 'reflection'], ['주변광(%)', 'ambient']])], 'num');
+G.forBlock['rm_color_value'] = (b) => {
+  const s = sensor(hub().devices.includes('ev3') ? 'ev3color' : 'color', b.getFieldValue('PORT'));
+  return [`${s}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+};
+
+def('rm_ultra_distance', C.sensor, '거리 센서 %1 거리(mm)', [dd('PORT', sensorPorts)], 'num');
+G.forBlock['rm_ultra_distance'] = (b) => {
+  const s = sensor(hub().devices.includes('ev3') ? 'ev3ultrasonic' : 'ultrasonic', b.getFieldValue('PORT'));
+  return [`${s}.distance()`, O.FUNCTION_CALL];
+};
+
+def('rm_force_pressed', C.sensor, '힘 센서 %1 눌렸나?', [dd('PORT', sensorPorts)], 'bool');
+G.forBlock['rm_force_pressed'] = (b) => [`${sensor('force', b.getFieldValue('PORT'))}.pressed()`, O.FUNCTION_CALL];
+
+def('rm_force_value', C.sensor, '힘 센서 %1 누르는 힘(N)', [dd('PORT', sensorPorts)], 'num');
+G.forBlock['rm_force_value'] = (b) => [`${sensor('force', b.getFieldValue('PORT'))}.force()`, O.FUNCTION_CALL];
+
+def('rm_touch_pressed', C.sensor, '터치 센서 %1 눌렸나?', [dd('PORT', sensorPorts)], 'bool');
+G.forBlock['rm_touch_pressed'] = (b) => [`${sensor('touch', b.getFieldValue('PORT'))}.pressed()`, O.FUNCTION_CALL];
+
+def('rm_gyro_value', C.sensor, '자이로 센서 %1 %2', [dd('PORT', sensorPorts), dd('WHAT', [['각도(도)', 'angle'], ['회전 속도(도/초)', 'speed']])], 'num');
+G.forBlock['rm_gyro_value'] = (b) => [`${sensor('gyro', b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+def('rm_gyro_reset', C.sensor, '자이로 센서 %1 각도를 0 으로', [dd('PORT', sensorPorts)], 'stmt');
+G.forBlock['rm_gyro_reset'] = (b) => `${sensor('gyro', b.getFieldValue('PORT'))}.reset_angle(0)\n`;
+
+// 허브 IMU
+def('rm_imu_value', C.sensor, '허브 %1', [dd('WHAT', [['방향(헤딩, 도)', 'heading'], ['앞뒤 기울기(도)', 'pitch'], ['좌우 기울기(도)', 'roll']])], 'num');
+G.forBlock['rm_imu_value'] = (b) => {
+  const h = hubObj();
+  const w = b.getFieldValue('WHAT');
+  if (w === 'heading') return [`${h}.imu.heading()`, O.FUNCTION_CALL];
+  return [`${h}.imu.tilt()[${w === 'pitch' ? 0 : 1}]`, O.MEMBER];
+};
+def('rm_imu_reset', C.sensor, '허브 방향(헤딩)을 0 으로', [], 'stmt');
+G.forBlock['rm_imu_reset'] = () => `${hubObj()}.imu.reset_heading(0)\n`;
+
+def('rm_hub_button', C.sensor, '허브 %1 버튼이 눌렸나?', [dd('BTN', hubButtons)], 'bool');
+G.forBlock['rm_hub_button'] = (b) => {
+  imp('pybricks.parameters', 'Button');
+  return [`Button.${b.getFieldValue('BTN')} in ${hubObj()}.buttons.pressed()`, O.RELATIONAL];
+};
+
+def('rm_timer_value', C.sensor, '타이머(초)', [], 'num');
+G.forBlock['rm_timer_value'] = () => {
+  imp('pybricks.tools', 'StopWatch');
+  setup('timer', 'timer = StopWatch()');
+  return ['timer.time() / 1000', O.MULTIPLICATIVE];
+};
+def('rm_timer_reset', C.sensor, '타이머 초기화', [], 'stmt');
+G.forBlock['rm_timer_reset'] = () => {
+  imp('pybricks.tools', 'StopWatch');
+  setup('timer', 'timer = StopWatch()');
+  return 'timer.reset()\n';
+};
+
+// ════════════════════════ 허브: 화면 / 빛 / 소리 ════════════════════════
+def('rm_display_text', C.hub, '화면에 %1 보여주기', [{ type: 'input_value', name: 'TEXT' }], 'stmt');
+G.forBlock['rm_display_text'] = (b) => {
+  const h = hubObj();
+  const t = val(b, 'TEXT', O.NONE, '""');
+  if (hub().display === 'screen') return `${h}.screen.print(${t})\n`;
+  return `${h}.display.text(str(${t}))\n`;
+};
+def('rm_display_number', C.hub, '화면에 숫자 %1 보여주기', [num('NUM')], 'stmt');
+G.forBlock['rm_display_number'] = (b) => {
+  const h = hubObj();
+  const n = val(b, 'NUM', O.NONE, '0');
+  if (hub().display === 'screen') return `${h}.screen.print(${n})\n`;
+  return `${h}.display.number(${n})\n`;
+};
+def('rm_display_icon', C.hub, '화면에 그림 %1 보여주기', [dd('ICON', ICONS)], 'stmt');
+G.forBlock['rm_display_icon'] = (b) => {
+  imp('pybricks.parameters', 'Icon');
+  return `${hubObj()}.display.icon(Icon.${b.getFieldValue('ICON')})\n`;
+};
+def('rm_display_pixel', C.hub, '화면 %1 줄 %2 칸 밝기 %3 %', [num('ROW'), num('COL'), num('BRIGHT')], 'stmt',
+  { tooltip: '줄·칸은 0~4' });
+G.forBlock['rm_display_pixel'] = (b) =>
+  `${hubObj()}.display.pixel(${val(b, 'ROW')}, ${val(b, 'COL')}, ${val(b, 'BRIGHT', O.NONE, '100')})\n`;
+def('rm_display_clear', C.hub, '화면 지우기', [], 'stmt');
+G.forBlock['rm_display_clear'] = () => {
+  const h = hubObj();
+  return hub().display === 'screen' ? `${h}.screen.clear()\n` : `${h}.display.off()\n`;
+};
+def('rm_light', C.hub, '허브 불빛 %1 켜기', [dd('COLOR', COLORS.filter((c) => !['BLACK', 'BROWN', 'NONE'].includes(c[1])))], 'stmt');
+G.forBlock['rm_light'] = (b) => {
+  imp('pybricks.parameters', 'Color');
+  return `${hubObj()}.light.on(Color.${b.getFieldValue('COLOR')})\n`;
+};
+def('rm_light_off', C.hub, '허브 불빛 끄기', [], 'stmt');
+G.forBlock['rm_light_off'] = () => `${hubObj()}.light.off()\n`;
+def('rm_beep', C.sound, '삐 소리 %1 Hz 로 %2 초', [num('FREQ'), num('SEC')], 'stmt');
+G.forBlock['rm_beep'] = (b) => `${hubObj()}.speaker.beep(${val(b, 'FREQ', O.NONE, '500')}, ${times(val(b, 'SEC', O.MULTIPLICATIVE, '0.2'), 1000)})\n`;
+def('rm_print', C.text, '터미널에 %1 출력', [{ type: 'input_value', name: 'TEXT' }], 'stmt');
+G.forBlock['rm_print'] = (b) => `print(${val(b, 'TEXT', O.NONE, '""')})\n`;
+
+// ════════════════════════ 제어 ════════════════════════
+def('rm_wait', C.control, '%1 초 기다리기', [num('SEC')], 'stmt');
+G.forBlock['rm_wait'] = (b) => `${waitImp()}(${times(val(b, 'SEC', O.MULTIPLICATIVE, '1'), 1000)})\n`;
+
+def('rm_forever', C.control, '무한 반복 %1 %2', [{ type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }], null,
+  { previousStatement: null, inputsInline: false });
+G.forBlock['rm_forever'] = (b) => {
+  const body = G.statementToCode(b, 'DO') || G.INDENT + 'pass\n';
+  return `while True:\n${body}${G.INDENT}${waitImp()}(10)\n`;
+};
+
+def('rm_wait_until', C.control, '%1 까지 기다리기', [{ type: 'input_value', name: 'COND', check: 'Boolean' }], 'stmt');
+G.forBlock['rm_wait_until'] = (b) => `while not (${val(b, 'COND', O.NONE, 'True')}):\n${G.INDENT}${waitImp()}(10)\n`;
+
+def('rm_end', C.control, '프로그램 끝내기', [], null, { previousStatement: null });
+G.forBlock['rm_end'] = () => 'raise SystemExit\n';
+
+// ════════════════════════ AI 카메라 ════════════════════════
+const GESTURES = [
+  ['✊ 주먹', 'FIST'], ['✋ 손바닥', 'OPEN'], ['☝ 검지 위', 'POINT_UP'], ['👍 엄지 위', 'THUMB_UP'],
+  ['👎 엄지 아래', 'THUMB_DOWN'], ['✌ 브이', 'VICTORY'], ['🤟 사랑해', 'LOVE'],
+];
+def('rm_ai_gesture', C.ai, '📷 손 모양이 %1 인가?', [dd('G', GESTURES)], 'bool');
+G.forBlock['rm_ai_gesture'] = (b) => {
+  impModule('rm_aicam');
+  return [`rm_aicam.is_gesture(rm_aicam.${b.getFieldValue('G')})`, O.FUNCTION_CALL];
+};
+def('rm_ai_hand_detected', C.ai, '📷 손이 보이나?', [], 'bool');
+G.forBlock['rm_ai_hand_detected'] = () => {
+  impModule('rm_aicam');
+  return ['rm_aicam.hand_detected()', O.FUNCTION_CALL];
+};
+def('rm_ai_hand_value', C.ai, '📷 손 %1', [dd('WHAT', [['가로 위치 X (0~100)', 'hand_x'], ['세로 위치 Y (0~100)', 'hand_y'], ['펼친 손가락 수', 'finger_count'], ['제스처 번호', 'gesture']])], 'num');
+G.forBlock['rm_ai_hand_value'] = (b) => {
+  impModule('rm_aicam');
+  return [`rm_aicam.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+};
+def('rm_ai_pose_bool', C.ai, '📷 스켈레톤: %1 ?', [dd('WHAT', [
+  ['사람이 보임', 'pose_detected'], ['왼손 들기', 'left_hand_up'], ['오른손 들기', 'right_hand_up'],
+  ['양손 들기', 'both_hands_up'], ['양팔 벌리기', 'arms_spread']])], 'bool');
+G.forBlock['rm_ai_pose_bool'] = (b) => {
+  impModule('rm_aicam');
+  return [`rm_aicam.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+};
+def('rm_ai_pose_value', C.ai, '📷 스켈레톤 %1', [dd('WHAT', [
+  ['몸 중심 X (0~100)', 'body_x'], ['코 X (0~100)', 'nose_x'], ['코 Y (0~100)', 'nose_y'], ['어깨 기울기(도)', 'shoulder_tilt']])], 'num');
+G.forBlock['rm_ai_pose_value'] = (b) => {
+  impModule('rm_aicam');
+  return [`rm_aicam.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+};
+
+// ════════════════════════ 게임패드 ════════════════════════
+def('rm_pad_setup', C.pad, '🎮 게임패드 연결: %1 ESP32 포트 %2', [dd('SRC', padSources), dd('PORT', lpfPorts)], 'stmt',
+  { tooltip: '웹 중계: 이 컴퓨터에 USB/블루투스로 연결한 패드를 에디터가 허브로 보냅니다.\nXbox 직접: 허브가 Xbox 무선 컨트롤러와 바로 연결 (패드의 페어링 버튼을 누르세요).\nESP32: LMS-ESP32 BluePad32 LPF2 펌웨어. 포트는 ESP32 일 때만 사용.' });
+G.forBlock['rm_pad_setup'] = (b) => {
+  imp('rm_pad', 'Gamepad');
+  const src = b.getFieldValue('SRC');
+  if (src === 'esp32') {
+    impModule('bluepad'); // LMS-ESP32 BluePad32 (안톤 마인드스톰)
+    setup('pad', `pad = Gamepad("esp32", ${port(b.getFieldValue('PORT'))})`, true);
+  }
+  else setup('pad', `pad = Gamepad("${src}")`, true);
+  return '';
+};
+def('rm_pad_stick', C.pad, '🎮 %1', [dd('AXIS', [['왼쪽 스틱 위아래', 'LY'], ['왼쪽 스틱 좌우', 'LX'], ['오른쪽 스틱 위아래', 'RY'], ['오른쪽 스틱 좌우', 'RX']])], 'num');
+G.forBlock['rm_pad_stick'] = (b) => [`${pad()}.stick("${b.getFieldValue('AXIS')}")`, O.FUNCTION_CALL];
+def('rm_pad_trigger', C.pad, '🎮 %1 트리거 (0~100)', [dd('SIDE', [['왼쪽(LT/L2)', 'L'], ['오른쪽(RT/R2)', 'R']])], 'num');
+G.forBlock['rm_pad_trigger'] = (b) => [`${pad()}.trigger("${b.getFieldValue('SIDE')}")`, O.FUNCTION_CALL];
+def('rm_pad_pressed', C.pad, '🎮 %1 버튼이 눌렸나?', [dd('BTN', [
+  ['A / ✕', 'A'], ['B / ○', 'B'], ['X / □', 'X'], ['Y / △', 'Y'], ['LB / L1', 'LB'], ['RB / R1', 'RB'],
+  ['방향키 위', 'UP'], ['방향키 아래', 'DOWN'], ['방향키 왼쪽', 'LEFT'], ['방향키 오른쪽', 'RIGHT'],
+  ['VIEW / SHARE', 'VIEW'], ['MENU / OPTIONS', 'MENU']])], 'bool');
+G.forBlock['rm_pad_pressed'] = (b) => [`${pad()}.pressed("${b.getFieldValue('BTN')}")`, O.FUNCTION_CALL];
+def('rm_pad_tank', C.pad, '🎮 왼쪽 스틱으로 탱크 주행: 왼쪽 모터 %1 오른쪽 모터 %2', [dd('L', motorPorts), dd('R', motorPorts)], 'stmt',
+  { tooltip: '왼쪽 모터는 반시계 방향으로 설정하면 앞으로 갑니다 (모터 방향 설정 블록).' });
+G.forBlock['rm_pad_tank'] = (b) => {
+  const p = pad();
+  const L = motor(b.getFieldValue('L'));
+  const R = motor(b.getFieldValue('R'));
+  return `left_power, right_power = ${p}.tank()\n${L}.dc(left_power)\n${R}.dc(right_power)\n`;
+};
+def('rm_pad_connected', C.pad, '🎮 게임패드가 연결됐나?', [], 'bool');
+G.forBlock['rm_pad_connected'] = () => [`${pad()}.connected()`, O.FUNCTION_CALL];
+def('rm_pad_rumble', C.pad, '🎮 진동 %1 % 로 %2 초 (Xbox 직접 연결)', [num('POWER'), num('SEC')], 'stmt');
+G.forBlock['rm_pad_rumble'] = (b) => `${pad()}.rumble(${val(b, 'POWER', O.NONE, '50')}, ${times(val(b, 'SEC', O.MULTIPLICATIVE, '0.2'), 1000)})\n`;
+
+// ════════════════════════ 허스키렌즈 ════════════════════════
+const husky = (p) => {
+  imp('rm_husky', 'HuskyLens');
+  setup('husky_' + p, `husky_${p} = HuskyLens(${port(p)})`);
+  return 'husky_' + p;
+};
+def('rm_husky_detected', C.husky, '🔍 허스키렌즈 %1 에 ID %2 가 보이나? (0=아무거나)', [dd('PORT', lpfPorts), num('ID')], 'bool');
+G.forBlock['rm_husky_detected'] = (b) => [`${husky(b.getFieldValue('PORT'))}.detected(${val(b, 'ID', O.NONE, '0')})`, O.FUNCTION_CALL];
+def('rm_husky_value', C.husky, '🔍 허스키렌즈 %1 %2', [dd('PORT', lpfPorts), dd('WHAT', [
+  ['ID', 'id'], ['중심 X (0~320)', 'x'], ['중심 Y (0~240)', 'y'], ['가로폭 W', 'width'], ['중앙에서 벗어난 정도', 'offset']])], 'num');
+G.forBlock['rm_husky_value'] = (b) => [`${husky(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+def('rm_husky_line', C.husky, '🔍 허스키렌즈 %1 라인 %2', [dd('PORT', lpfPorts), dd('WHAT', [
+  ['시작 X', 'line_start_x'], ['끝 X', 'line_end_x'], ['끝 Y', 'line_end_y']])], 'num',
+  { tooltip: '허스키렌즈를 라인 추적(Line Tracking) 알고리즘으로 바꿨을 때 사용합니다.' });
+G.forBlock['rm_husky_line'] = (b) => [`${husky(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+// ════════════════════════ ESP32 (안톤 마인드스톰 PUPRemote) ════════════════════════
+const esp = (p) => {
+  imp('rm_esp32', 'ESP32');
+  setup('esp32_' + p, `esp32_${p} = ESP32(${port(p)})`);
+  return 'esp32_' + p;
+};
+def('rm_esp_channel', C.esp, '📡 ESP32 %1 채널 %2 형식 %3 등록', [dd('PORT', lpfPorts),
+  { type: 'field_input', name: 'NAME', text: 'line' }, { type: 'field_input', name: 'FMT', text: 'hhb' }], 'stmt',
+  { tooltip: 'ESP32 코드의 add_channel 과 같은 이름·형식, 같은 순서로 등록하세요.\n형식: b=1바이트 h=2바이트 i=4바이트 정수, f=실수 (struct 형식)' });
+G.forBlock['rm_esp_channel'] = (b) => `${esp(b.getFieldValue('PORT'))}.add_channel(${str(b.getFieldValue('NAME'))}, ${str(b.getFieldValue('FMT'))})\n`;
+def('rm_esp_command', C.esp, '📡 ESP32 %1 명령 %2 받는 형식 %3 보내는 형식 %4 등록', [dd('PORT', lpfPorts),
+  { type: 'field_input', name: 'NAME', text: 'led' }, { type: 'field_input', name: 'TO', text: 'b' }, { type: 'field_input', name: 'FROM', text: 'b' }], 'stmt',
+  { tooltip: 'ESP32 코드의 add_command(이름, to_hub_fmt, from_hub_fmt) 와 같게 등록합니다.' });
+G.forBlock['rm_esp_command'] = (b) =>
+  `${esp(b.getFieldValue('PORT'))}.add_command(${str(b.getFieldValue('NAME'))}, ${str(b.getFieldValue('TO'))}, ${str(b.getFieldValue('FROM'))})\n`;
+def('rm_esp_value', C.esp, '📡 ESP32 %1 %2 의 %3 번째 값', [dd('PORT', lpfPorts), { type: 'field_input', name: 'NAME', text: 'line' }, num('IDX')], 'num',
+  { tooltip: '0번째부터 셉니다.' });
+G.forBlock['rm_esp_value'] = (b) => [`${esp(b.getFieldValue('PORT'))}.value(${str(b.getFieldValue('NAME'))}, ${val(b, 'IDX')})`, O.FUNCTION_CALL];
+def('rm_esp_call', C.esp, '📡 ESP32 %1 명령 %2 실행, 보낼 값 %3', [dd('PORT', lpfPorts), { type: 'field_input', name: 'NAME', text: 'led' }, { type: 'input_value', name: 'ARG' }], 'stmt',
+  { tooltip: '보낼 값을 비워 두면 값 없이 호출합니다.' });
+G.forBlock['rm_esp_call'] = (b) => {
+  const a = G.valueToCode(b, 'ARG', O.NONE);
+  return `${esp(b.getFieldValue('PORT'))}.call(${str(b.getFieldValue('NAME'))}${a ? ', ' + a : ''})\n`;
+};
+
+// ════════════════════════ 코드 생성 ════════════════════════
+
+/** 시작 블록 아래와 함수 정의만 파이썬으로 만듭니다. */
+export function generatePython(workspace) {
+  G.init(workspace);
+  G.rmImports_ = new Map();
+  G.rmPlainImports_ = new Set();
+  G.rmSetup_ = new Map();
+  hubObj();
+
+  let main = '';
+  let hasStart = false;
+  for (const block of workspace.getTopBlocks(true)) {
+    if (!block.isEnabled()) continue;
+    if (block.type === 'rm_start') {
+      hasStart = true;
+      main += G.blockToCode(block);
+    } else if (block.type.startsWith('procedures_def')) {
+      G.blockToCode(block);
+    }
+  }
+
+  // import 정리
+  const lines = [];
+  const order = ['pybricks.hubs', 'pybricks.pupdevices', 'pybricks.ev3devices', 'pybricks.parameters', 'pybricks.robotics', 'pybricks.tools'];
+  const mods = [...G.rmImports_.keys()].sort((a, b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+  for (const m of mods) lines.push(`from ${m} import ${[...G.rmImports_.get(m)].sort().join(', ')}`);
+  for (const m of G.rmPlainImports_) lines.push(`import ${m}`);
+
+  const header = '# 로보메이커스 워드블럭에서 만든 Pybricks 프로그램';
+  const setupCode = [...G.rmSetup_.values()].join('\n');
+
+  // Blockly 기본 정의(변수 초기화, 함수)를 꺼내 순서를 정합니다.
+  const defs = [];
+  let varInit = '';
+  for (const [k, v] of Object.entries(G.definitions_)) {
+    if (k === 'variables') varInit = v;
+    else if (/^(from\s+\S+\s+)?import\s/.test(v)) lines.push(v);
+    else defs.push(v);
+  }
+  G.definitions_ = Object.create(null);
+  G.finish('');
+
+  let out = header + '\n\n' + [...new Set(lines)].join('\n') + '\n\n';
+  out += '# 장치 설정\n' + setupCode + '\n\n';
+  if (varInit) out += varInit + '\n\n';
+  if (defs.length) out += defs.join('\n\n') + '\n\n';
+  out += '# 프로그램 시작\n' + (main.trim() ? main : 'pass\n');
+  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart };
+}

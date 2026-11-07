@@ -1,0 +1,121 @@
+// examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
+
+const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
+const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
+const B = (type, fields = {}, inputs = {}) => ({ type, fields, inputs });
+const V = (block) => ({ block });
+
+/** 블록 배열을 next 로 이어 붙입니다. */
+function chain(list) {
+  const blocks = list.map((b) => JSON.parse(JSON.stringify(b)));
+  for (let i = blocks.length - 2; i >= 0; i--) blocks[i].next = { block: blocks[i + 1] };
+  return blocks[0];
+}
+const DO = (list) => ({ block: chain(list) });
+const forever = (list) => B('rm_forever', {}, { DO: DO(list) });
+const ifElse = (cond, yes, no) => ({
+  type: 'controls_if',
+  extraState: no ? { hasElse: true } : undefined,
+  inputs: { IF0: V(cond), DO0: DO(yes), ...(no ? { ELSE: DO(no) } : {}) },
+});
+const ifElif = (pairs, no) => {
+  const inputs = {};
+  pairs.forEach(([c, d], i) => {
+    inputs['IF' + i] = V(c);
+    inputs['DO' + i] = DO(d);
+  });
+  if (no) inputs.ELSE = DO(no);
+  return { type: 'controls_if', extraState: { elseIfCount: pairs.length - 1, hasElse: !!no }, inputs };
+};
+const start = (list) => ({ ...B('rm_start'), x: 40, y: 40, next: { block: chain(list) } });
+const ws = (top) => ({ blocks: { languageVersion: 0, blocks: [top] } });
+
+export const EXAMPLES = {
+  basic: {
+    title: '기본: 앞으로 갔다 돌아오기',
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+      B('rm_light', { COLOR: 'GREEN' }),
+      B('rm_drive_straight', {}, { DIST: N(300) }),
+      B('rm_drive_turn', {}, { ANGLE: N(180) }),
+      B('rm_drive_straight', {}, { DIST: N(300) }),
+      B('rm_beep', {}, { FREQ: N(800), SEC: N(0.3) }),
+    ].filter((b) => h.speaker || b.type !== 'rm_beep'))),
+  },
+  hand: {
+    title: 'AI 카메라: 손 모양으로 로봇 조종',
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+      forever([
+        ifElif([
+          [B('rm_ai_gesture', { G: 'OPEN' }), [B('rm_drive_drive', {}, { SPEED: N(150), TURN: N(0) })]],
+          [B('rm_ai_gesture', { G: 'POINT_UP' }), [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(90) })]],
+          [B('rm_ai_gesture', { G: 'VICTORY' }), [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(-90) })]],
+        ], [B('rm_drive_stop')]),
+      ]),
+    ])),
+  },
+  pose: {
+    title: 'AI 카메라: 손 들면 불빛 바꾸기 (스켈레톤)',
+    hubs: ['prime', 'essential', 'ev3'],
+    build: () => ws(start([
+      forever([
+        ifElif([
+          [B('rm_ai_pose_bool', { WHAT: 'both_hands_up' }), [B('rm_light', { COLOR: 'GREEN' })]],
+          [B('rm_ai_pose_bool', { WHAT: 'left_hand_up' }), [B('rm_light', { COLOR: 'BLUE' })]],
+          [B('rm_ai_pose_bool', { WHAT: 'right_hand_up' }), [B('rm_light', { COLOR: 'RED' })]],
+        ], [B('rm_light_off')]),
+      ]),
+    ])),
+  },
+  pad: {
+    title: '게임패드: 탱크 주행 + A 버튼 소리',
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ws(start([
+      B('rm_pad_setup', { SRC: 'web', PORT: h.lpf2 ? h.sensorPorts[0] : 'A' }),
+      B('rm_motor_setup', { PORT: h.motorPorts[0], DIR: 'COUNTERCLOCKWISE' }),
+      forever([
+        B('rm_pad_tank', { L: h.motorPorts[0], R: h.motorPorts[1] }),
+        ifElse(B('rm_pad_pressed', { BTN: 'A' }), [h.speaker ? B('rm_beep', {}, { FREQ: N(600), SEC: N(0.1) }) : B('rm_light', { COLOR: 'RED' })]),
+      ]),
+    ])),
+  },
+  husky: {
+    title: '허스키렌즈: 색 따라 회전하기',
+    hubs: ['prime', 'essential'],
+    build: (h) => {
+      const P = h.sensorPorts.length > 2 ? 'C' : 'B';
+      return ws(start([
+        B('rm_drive_setup', { L: 'A', R: h.sensorPorts.length > 2 ? 'E' : 'B', WD: 56, AT: 112, GYRO: false }),
+        forever([
+          ifElif([
+            [{ type: 'logic_negate', inputs: { BOOL: V(B('rm_husky_detected', { PORT: P }, { ID: N(0) })) } }, [B('rm_drive_stop')]],
+            [{ type: 'logic_compare', fields: { OP: 'LT' }, inputs: { A: V(B('rm_husky_value', { PORT: P, WHAT: 'x' })), B: N(120) } },
+              [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(-60) })]],
+            [{ type: 'logic_compare', fields: { OP: 'GT' }, inputs: { A: V(B('rm_husky_value', { PORT: P, WHAT: 'x' })), B: N(200) } },
+              [B('rm_drive_drive', {}, { SPEED: N(0), TURN: N(60) })]],
+          ], [B('rm_drive_stop')]),
+        ]),
+      ]));
+    },
+  },
+  esp32: {
+    title: 'ESP32(PUPRemote): 채널 값 화면에 보이기',
+    hubs: ['prime'],
+    build: () => ws(start([
+      B('rm_esp_channel', { PORT: 'A', NAME: 'line', FMT: 'hhb' }),
+      forever([
+        B('rm_display_number', {}, { NUM: V(B('rm_esp_value', { PORT: 'A', NAME: 'line' }, { IDX: N(0) })) }),
+        B('rm_wait', {}, { SEC: N(0.1) }),
+      ]),
+    ])),
+  },
+};
+
+export function emptyProgram() {
+  return ws({ ...B('rm_start'), x: 40, y: 40 });
+}
+
+export { T };
