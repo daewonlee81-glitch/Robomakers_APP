@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.1';
+import { t } from './i18n.js?v=0.3.2';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -159,6 +159,23 @@ export const EXAMPLES = {
       ]),
     ])),
   },
+};
+
+// ESP32 핀 예제는 위 EXAMPLES 에 이어 붙입니다.
+EXAMPLES.esp32io = {
+  title: () => t('ex.esp32io'),
+  hubs: ['prime', 'essential'],
+  build: () => ws(start([
+    B('rm_eio_np_init', { PORT: 'A' }, { PIN: N(12), COUNT: N(8) }),
+    forever([
+      B('rm_eio_servo', { PORT: 'A' }, { PIN: N(21), ANGLE: N(0) }),
+      B('rm_eio_np_fillc', { PORT: 'A', COLOR: 'RED' }),
+      B('rm_wait', {}, { SEC: N(1) }),
+      B('rm_eio_servo', { PORT: 'A' }, { PIN: N(21), ANGLE: N(180) }),
+      B('rm_eio_np_fillc', { PORT: 'A', COLOR: 'BLUE' }),
+      B('rm_wait', {}, { SEC: N(1) }),
+    ]),
+  ])),
 };
 
 export function emptyProgram() {

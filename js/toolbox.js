@@ -1,7 +1,7 @@
 // toolbox.js — 허브에 맞는 블록 꾸러미(툴박스)
-import { HUBS } from './hubs.js?v=0.3.1';
-import { C } from './blocks.js?v=0.3.1';
-import { t } from './i18n.js?v=0.3.1';
+import { HUBS } from './hubs.js?v=0.3.2';
+import { C } from './blocks.js?v=0.3.2';
+import { t } from './i18n.js?v=0.3.2';
 
 const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const txt = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -144,6 +144,18 @@ export function buildToolbox(hubKey) {
       b('rm_esp_command'),
       b('rm_esp_value', { IDX: n(0) }),
       b('rm_esp_call', { ARG: n(1) }),
+      { kind: 'label', text: t('tb.espio') },
+      b('rm_eio_dout', { PIN: n(2) }),
+      b('rm_eio_din', { PIN: n(4) }),
+      b('rm_eio_ain', { PIN: n(34) }),
+      b('rm_eio_pwm', { PIN: n(2), VAL: n(50) }),
+      b('rm_eio_servo', { PIN: n(21), ANGLE: n(90) }),
+      { kind: 'label', text: t('tb.neopixel') },
+      b('rm_eio_np_init', { PIN: n(12), COUNT: n(8) }),
+      b('rm_eio_np_setc', { N: n(1) }),
+      b('rm_eio_np_set', { N: n(1), R: n(60), G: n(0), B: n(0) }),
+      b('rm_eio_np_fillc'),
+      b('rm_eio_np_fill', { R: n(0), G: n(0), B: n(60) }),
     ]));
   }
 

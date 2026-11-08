@@ -1,9 +1,9 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.1';
-import { t, cocoLabel } from './i18n.js?v=0.3.1';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.1';
+import { hub } from './hubs.js?v=0.3.2';
+import { t, cocoLabel } from './i18n.js?v=0.3.2';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.2';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -489,7 +489,7 @@ G.forBlock['rm_husky_line'] = (b) => [`${husky(b.getFieldValue('PORT'))}.${b.get
 // ════════════════════════ ESP32 (안톤 마인드스톰 PUPRemote) ════════════════════════
 const esp = (p) => {
   imp('rm_esp32', 'ESP32');
-  setup('esp32_' + p, `esp32_${p} = ESP32(${port(p)})`);
+  setup('esp32_' + p, `esp32_${p} = ESP32(${port(p)}${G.rmEspIo_?.has(p) ? ', io=True' : ''})`);
   return 'esp32_' + p;
 };
 def('rm_esp_channel', C.esp, null, [dd('PORT', lpfPorts),
@@ -507,6 +507,35 @@ G.forBlock['rm_esp_call'] = (b) => {
   return `${esp(b.getFieldValue('PORT'))}.call(${str(b.getFieldValue('NAME'))}${a ? ', ' + a : ''})\n`;
 };
 
+// ── ESP32 핀 (GPIO·PWM·서보·네오픽셀) — ESP32 쪽 rm_io.py 필요 ──
+const pinIn = { type: 'input_value', name: 'PIN', check: 'Number' };
+const RGB = [num('R'), num('G'), num('B')];
+// 네오픽셀 색 (허브 포트 전원을 아끼도록 밝기를 낮춘 값)
+const NP_COLORS = { RED: [60, 0, 0], ORANGE: [60, 20, 0], YELLOW: [50, 40, 0], GREEN: [0, 60, 0], CYAN: [0, 45, 45], BLUE: [0, 0, 60], VIOLET: [30, 0, 60], MAGENTA: [60, 0, 35], WHITE: [40, 40, 40], BLACK: [0, 0, 0] };
+const npColors = () => Object.keys(NP_COLORS).map((k) => [t('o.color.' + (k === 'BLACK' ? 'OFF' : k)), k]);
+export const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc'];
+const pinOf = (b) => val(b, 'PIN', O.NONE, '0');
+def('rm_eio_dout', C.esp, null, [dd('PORT', lpfPorts), pinIn, dd('ON', () => opts('onoff', ['1', '0']))], 'stmt');
+G.forBlock['rm_eio_dout'] = (b) => `${esp(b.getFieldValue('PORT'))}.digital_write(${pinOf(b)}, ${b.getFieldValue('ON') === '1' ? 'True' : 'False'})\n`;
+def('rm_eio_din', C.esp, null, [dd('PORT', lpfPorts), pinIn, dd('PULL', () => opts('pull', ['2', '3', '1']))], 'bool');
+G.forBlock['rm_eio_din'] = (b) => [`${esp(b.getFieldValue('PORT'))}.digital_read(${pinOf(b)}, ${b.getFieldValue('PULL')})`, O.FUNCTION_CALL];
+def('rm_eio_ain', C.esp, null, [dd('PORT', lpfPorts), pinIn], 'num');
+G.forBlock['rm_eio_ain'] = (b) => [`${esp(b.getFieldValue('PORT'))}.analog_read(${pinOf(b)})`, O.FUNCTION_CALL];
+def('rm_eio_pwm', C.esp, null, [dd('PORT', lpfPorts), pinIn, num('VAL')], 'stmt');
+G.forBlock['rm_eio_pwm'] = (b) => `${esp(b.getFieldValue('PORT'))}.pwm(${pinOf(b)}, ${val(b, 'VAL')})\n`;
+def('rm_eio_servo', C.esp, null, [dd('PORT', lpfPorts), pinIn, num('ANGLE')], 'stmt');
+G.forBlock['rm_eio_servo'] = (b) => `${esp(b.getFieldValue('PORT'))}.servo(${pinOf(b)}, ${val(b, 'ANGLE')})\n`;
+def('rm_eio_np_init', C.esp, null, [dd('PORT', lpfPorts), pinIn, num('COUNT')], 'stmt');
+G.forBlock['rm_eio_np_init'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_init(${pinOf(b)}, ${val(b, 'COUNT', O.NONE, '1')})\n`;
+def('rm_eio_np_set', C.esp, null, [dd('PORT', lpfPorts), num('N'), ...RGB], 'stmt');
+G.forBlock['rm_eio_np_set'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_set(${val(b, 'N', O.NONE, '1')}, ${val(b, 'R')}, ${val(b, 'G')}, ${val(b, 'B')})\n`;
+def('rm_eio_np_setc', C.esp, null, [dd('PORT', lpfPorts), num('N'), dd('COLOR', npColors)], 'stmt');
+G.forBlock['rm_eio_np_setc'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_set(${val(b, 'N', O.NONE, '1')}, ${NP_COLORS[b.getFieldValue('COLOR')].join(', ')})\n`;
+def('rm_eio_np_fill', C.esp, null, [dd('PORT', lpfPorts), ...RGB], 'stmt');
+G.forBlock['rm_eio_np_fill'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_fill(${val(b, 'R')}, ${val(b, 'G')}, ${val(b, 'B')})\n`;
+def('rm_eio_np_fillc', C.esp, null, [dd('PORT', lpfPorts), dd('COLOR', npColors)], 'stmt');
+G.forBlock['rm_eio_np_fillc'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_fill(${NP_COLORS[b.getFieldValue('COLOR')].join(', ')})\n`;
+
 // ════════════════════════ 코드 생성 ════════════════════════
 
 /** 시작 블록 아래와 함수 정의만 파이썬으로 만듭니다. */
@@ -515,6 +544,7 @@ export function generatePython(workspace) {
   G.rmImports_ = new Map();
   G.rmPlainImports_ = new Set();
   G.rmSetup_ = new Map();
+  G.rmEspIo_ = new Set(workspace.getAllBlocks(false).filter((b) => ESP_IO_BLOCKS.includes(b.type) && b.isEnabled()).map((b) => b.getFieldValue('PORT')));
   hubObj();
 
   let main = '';
