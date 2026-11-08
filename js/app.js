@@ -1,16 +1,17 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.2';
-import { generatePython, teachNames } from './blocks.js?v=0.3.2';
-import { buildToolbox } from './toolbox.js?v=0.3.2';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.2';
-import { makeZip } from './zip.js?v=0.3.2';
-import { initHelp } from './help.js?v=0.3.2';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.2';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.2';
-import { WebGamepad } from './gamepad.js?v=0.3.2';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.2';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.3';
+import { generatePython, teachNames } from './blocks.js?v=0.3.3';
+import { buildToolbox } from './toolbox.js?v=0.3.3';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.3';
+import { makeZip } from './zip.js?v=0.3.3';
+import { initHelp } from './help.js?v=0.3.3';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.3';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.3';
+import { WebGamepad } from './gamepad.js?v=0.3.3';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.3';
+import { HuskyMonitor } from './huskymon.js?v=0.3.3';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -132,6 +133,7 @@ function selectHub(key, keepBlocks = true) {
   if (!keepBlocks) load(emptyProgram());
   refreshCode();
   renderExamples();
+  if (typeof initHuskyPane === 'function') initHuskyPane();
 }
 
 workspace.addChangeListener((e) => {
@@ -179,7 +181,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.2');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.3');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -274,7 +276,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.2`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.3`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -327,10 +329,22 @@ hubConn.addEventListener('status', (e) => {
 let stdoutLine = '';
 let runOut = '';
 let hinted = false;
+let stdoutHold = '';
 hubConn.addEventListener('stdout', (e) => {
-  termWrite(e.detail, /Traceback|Error/.test(stdoutLine + e.detail) ? 'err' : '');
-  stdoutLine = e.detail.split('\n').pop();
-  runOut = (runOut + e.detail).slice(-4000);
+  // 허스키렌즈 모니터 줄(@HK:...)은 터미널에 쓰지 않고 모니터로 보냅니다.
+  let text = stdoutHold + e.detail;
+  stdoutHold = '';
+  const lines = text.split('\n');
+  let tail = lines.pop();
+  if (tail.startsWith('@')) {
+    stdoutHold = tail;
+    tail = '';
+  }
+  let out = lines.filter((l) => !huskyMon.line(l.replace(/\r$/, ''))).map((l) => l + '\n').join('') + tail;
+  if (!out) return;
+  termWrite(out, /Traceback|Error/.test(stdoutLine + out) ? 'err' : '');
+  stdoutLine = out.split('\n').pop();
+  runOut = (runOut + out).slice(-4000);
 });
 /** 프로그램이 멈춘 뒤, 자주 나는 오류에 도움말을 붙입니다. */
 function errorHint() {
@@ -349,9 +363,9 @@ function errorHint() {
  * 컴파일해서 허브로 보냅니다.
  * @param {boolean} andRun true = 내려받고 실행, false = 허브에 저장만 (허브 버튼으로 실행)
  */
-async function sendToHub(andRun) {
-  const src = editToggle.checked ? codeEdit.value : currentCode;
-  if (!editToggle.checked && !generatePython(workspace).hasStart) {
+async function sendToHub(andRun, override) {
+  const src = override || (editToggle.checked ? codeEdit.value : currentCode);
+  if (!override && !editToggle.checked && !generatePython(workspace).hasStart) {
     toast(t('msg.needStart'), 'err');
     return;
   }
@@ -386,6 +400,52 @@ async function sendToHub(andRun) {
     setConnUi();
   }
 }
+// ───────────────────────── 허스키렌즈 모니터 ─────────────────────────
+const huskyMon = new HuskyMonitor($('#huskyCanvas'), $('#huskyReadout'), $('#huskyHint'));
+function initHuskyPane() {
+  const h = hub();
+  $('#tabHusky').hidden = !h.lpf2;
+  if (!h.lpf2 && !$('#paneHusky').hidden) document.querySelector('.tab[data-pane="panePython"]').click();
+  const sel = $('#huskyPort');
+  const ports = h.sensorPorts || [];
+  const used = (currentCode.match(/\bhusky_([A-F])\b/) || [])[1];
+  const keep = sel.value || used || localStorage.getItem('rm-husky-port') || (ports.includes('C') ? 'C' : ports[0]);
+  sel.innerHTML = ports.map((p) => `<option>${p}</option>`).join('');
+  sel.value = ports.includes(keep) ? keep : ports[0];
+}
+$('#huskyPort').addEventListener('change', (e) => localStorage.setItem('rm-husky-port', e.target.value));
+$('#huskyKind').value = localStorage.getItem('rm-husky-kind') || 'block';
+huskyMon.setKind($('#huskyKind').value);
+$('#huskyKind').addEventListener('change', (e) => {
+  localStorage.setItem('rm-husky-kind', e.target.value);
+  huskyMon.setKind(e.target.value);
+});
+/** 허스키렌즈 값을 계속 보내는 작은 프로그램 */
+function huskyMonitorProgram(p) {
+  return [
+    '# HuskyLens monitor (RoboMakers WordBlock)',
+    'from pybricks.parameters import Port',
+    'from pybricks.tools import wait',
+    'from rm_husky import HuskyLens',
+    '',
+    `lens = HuskyLens(Port.${p}, interval=0)`,
+    `print("HuskyLens monitor: Port.${p}")`,
+    'while True:',
+    '    lens.update()',
+    '    lens.monitor(True)',
+    '    wait(40)',
+    '',
+  ].join('\n');
+}
+$('#btnHuskyRun').addEventListener('click', async () => {
+  if (!hubConn.connected) return toast(t('husky.needConn'), 'err');
+  if (hubConn.running) {
+    await hubConn.stop().catch(() => {});
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  sendToHub(true, huskyMonitorProgram($('#huskyPort').value));
+});
+
 const run = () => sendToHub(true);
 $('#btnRun').addEventListener('click', run);
 $('#btnUpload').addEventListener('click', () => sendToHub(false));
@@ -660,6 +720,7 @@ async function pumpSend() {
   let frame = '';
   if (cam.running) frame += cam.frame();
   if ($('#padRelay').checked) frame += gpad.frame();
+  if (!$('#paneHusky').hidden) frame += 'M:1\n';
   if (!frame) return;
   sending = true;
   lastSend = performance.now();
@@ -672,6 +733,7 @@ async function pumpSend() {
 }
 setInterval(() => {
   if (!$('#panePad').hidden) renderPad();
+  if (!$('#paneHusky').hidden && huskyMon.last) huskyMon.render();
   pumpSend();
 }, 80);
 const camUpdateUi = cam.onUpdate;

@@ -224,3 +224,13 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .bug-actions .btn, .bug-actions button { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); }
 .bug-actions .primary { background: var(--brand); border-color: var(--brand); color: #fff; }
 .bug-addr { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 0; user-select: all; }
+
+/* 허스키렌즈 모니터 */
+.cam.husky canvas { transform: none; object-fit: contain; }
+#huskyReadout div { gap: 8px; }
+#huskyReadout b { min-width: 44px; font-variant-numeric: tabular-nums; }
+#huskyReadout .muted { margin-left: auto; font-size: 12px; text-align: right; }
+#huskyReadout .husky-rate span { color: var(--ink-2); font-size: 12.5px; }
+#btnHuskyRun { white-space: nowrap; flex: none; }
+#huskyKind { flex: 1 1 auto; min-width: 0; width: 0; }
+#huskyPort { flex: none; }

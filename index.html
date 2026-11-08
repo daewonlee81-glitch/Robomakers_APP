@@ -4,21 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RoboMakers WordBlock</title>
-<link rel="icon" type="image/png" href="img/favicon.png?v=0.3.2">
-<link rel="apple-touch-icon" href="img/logo.png?v=0.3.2">
+<link rel="icon" type="image/png" href="img/favicon.png?v=0.3.3">
+<link rel="apple-touch-icon" href="img/logo.png?v=0.3.3">
 <meta name="theme-color" content="#2E6ABF">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/app.css?v=0.3.2">
-<script src="vendor/blockly/blockly_compressed.js?v=0.3.2"></script>
-<script src="vendor/blockly/blocks_compressed.js?v=0.3.2"></script>
-<script src="vendor/blockly/python_compressed.js?v=0.3.2"></script>
-<script src="vendor/mpy-cross/mpy-cross-v6.js?v=0.3.2"></script>
+<link rel="stylesheet" href="css/app.css?v=0.3.3">
+<script src="vendor/blockly/blockly_compressed.js?v=0.3.3"></script>
+<script src="vendor/blockly/blocks_compressed.js?v=0.3.3"></script>
+<script src="vendor/blockly/python_compressed.js?v=0.3.3"></script>
+<script src="vendor/mpy-cross/mpy-cross-v6.js?v=0.3.3"></script>
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <img src="img/logo.png?v=0.3.2" width="34" height="34" alt="" data-i18n-alt="brand.logoAlt">
+    <img src="img/logo.png?v=0.3.3" width="34" height="34" alt="" data-i18n-alt="brand.logoAlt">
     <div><strong data-i18n="brand.name"></strong><span data-i18n="brand.sub"></span></div>
   </div>
 
@@ -80,6 +80,7 @@
       <button class="tab active" data-pane="panePython" data-i18n="tab.python"></button>
       <button class="tab" data-pane="paneCam" data-i18n="tab.cam"></button>
       <button class="tab" data-pane="panePad" data-i18n="tab.pad"></button>
+      <button class="tab" id="tabHusky" data-pane="paneHusky" data-i18n="tab.husky"></button>
     </nav>
 
     <section id="panePython" class="pane">
@@ -142,6 +143,25 @@
       <div class="note" data-i18n="pad.help"></div>
     </section>
 
+    <section id="paneHusky" class="pane" hidden>
+      <div class="pane-tools">
+        <label class="muted" for="huskyPort" data-i18n="husky.port"></label>
+        <select id="huskyPort"></select>
+        <select id="huskyKind">
+          <option value="block" data-i18n="husky.kind.block"></option>
+          <option value="line" data-i18n="husky.kind.line"></option>
+        </select>
+        <span class="spacer"></span>
+        <button id="btnHuskyRun" class="primary" data-i18n="husky.run" data-i18n-title="husky.runTitle"></button>
+      </div>
+      <div class="cam husky">
+        <canvas id="huskyCanvas" width="640" height="480"></canvas>
+        <div id="huskyHint" class="cam-hint" data-i18n="husky.wait"></div>
+      </div>
+      <div id="huskyReadout" class="readout"></div>
+      <div class="note" data-i18n="husky.help"></div>
+    </section>
+
     <div class="termwrap">
       <div class="termbar"><span data-i18n="term.title"></span><button id="btnClearTerm" data-i18n="term.clear"></button></div>
       <pre id="terminal"></pre>
@@ -151,6 +171,6 @@
 
 <div id="helpModal" class="modal" hidden></div>
 <div id="toast"></div>
-<script type="module" src="js/main.js?v=0.3.2"></script>
+<script type="module" src="js/main.js?v=0.3.3"></script>
 </body>
 </html>

@@ -10,18 +10,38 @@
 # ESP32 펌웨어의 mode5 4번째 값(v4)에 ID 를 넣어 두면(권장)
 # 모드 전환 없이 한 번에 읽어 더 빠릅니다. 0 이면 mode0 을 따로 읽습니다.
 
+#
+# 허스키렌즈 모니터: 웹 에디터의 「허스키렌즈」 탭이 열려 있으면(stdin 'M' 프레임)
+# 읽은 값을 0.1초마다 "@HK:포트,ID,v1,v2,v3" 줄로 출력합니다. 에디터는 이 줄을 터미널에서 숨기고 그림으로 보여 줍니다.
+
 from pybricks.iodevices import PUPDevice
-from pybricks.tools import StopWatch
+from pybricks.tools import StopWatch, wait
+import rm_link
 
 _lenses = {}
 
 
+def _connect(port, ms=4000):
+    """브리지(ESP32)가 켜지고 허브와 인사할 때까지 최대 ms 기다립니다."""
+    sw = StopWatch()
+    while True:
+        try:
+            return PUPDevice(port)
+        except OSError:
+            if sw.time() >= ms:
+                print("HuskyLens?", port)
+                raise
+        wait(200)
+
+
 class HuskyLens:
     def __init__(self, port, interval=30):
-        self.dev = PUPDevice(port)
+        self.dev = _connect(port)
+        self.port = str(port)[-1]
         self.interval = interval
         self._clock = StopWatch()
         self._last = -1000
+        self._mon = -1000
         self._v = (0, 0, 0)
         self._id = 0
 
@@ -36,6 +56,15 @@ class HuskyLens:
             self._id = r[3]
         else:
             self._id = self.dev.read(0)[0]
+        self.monitor()
+
+    def monitor(self, force=False):
+        """에디터의 허스키렌즈 탭으로 값 보내기 (탭이 열려 있을 때만, 0.1초마다)."""
+        now = self._clock.time()
+        if now - self._mon >= 100 and (force or rm_link.fresh("M")):
+            self._mon = now
+            v = self._v
+            print("@HK:%s,%d,%d,%d,%d" % (self.port, self._id, v[0], v[1], v[2]))
 
     # 블록형
     def id(self):

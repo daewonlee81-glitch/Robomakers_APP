@@ -1,7 +1,7 @@
 // esp32gen.js — 허브 프로그램의 「ESP32 채널/명령 등록」 블록에 맞는 LMS-ESP32 쪽 main.py 를 만듭니다.
 // 허브 쪽 PUPRemoteHub 는 모드 순서·이름·크기를 ESP32 쪽과 비교하므로, 같은 순서로 등록해 주는 것이 중요합니다.
-import { t } from './i18n.js?v=0.3.2';
-import { APP } from './config.js?v=0.3.2';
+import { t } from './i18n.js?v=0.3.3';
+import { APP } from './config.js?v=0.3.3';
 
 const RE = /\besp32_([A-F])\.add_(channel|command)\('((?:[^'\\]|\\.)*)', '((?:[^'\\]|\\.)*)'(?:, '((?:[^'\\]|\\.)*)')?\)/g;
 
