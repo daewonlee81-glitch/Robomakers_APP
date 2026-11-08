@@ -1,16 +1,16 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.0';
-import { generatePython, teachNames } from './blocks.js?v=0.3.0';
-import { buildToolbox } from './toolbox.js?v=0.3.0';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.0';
-import { makeZip } from './zip.js?v=0.3.0';
-import { initHelp } from './help.js?v=0.3.0';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.0';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.0';
-import { WebGamepad } from './gamepad.js?v=0.3.0';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.0';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.1';
+import { generatePython, teachNames } from './blocks.js?v=0.3.1';
+import { buildToolbox } from './toolbox.js?v=0.3.1';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.1';
+import { makeZip } from './zip.js?v=0.3.1';
+import { initHelp } from './help.js?v=0.3.1';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.1';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.1';
+import { WebGamepad } from './gamepad.js?v=0.3.1';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.1';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -178,6 +178,10 @@ const downloads = {
     files.push({ name: `${projectName()}/README.txt`, data: t('dl.readme') + '\n' });
     download(makeZip(files), `${projectName()}.zip`);
   },
+  esp32: async () => {
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.1');
+    download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
+  },
   project: () => $('#btnSave').click(),
 };
 $('#downloadMenu').addEventListener('click', (e) => {
@@ -270,7 +274,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.0`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.1`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -312,15 +316,32 @@ hubConn.addEventListener('disconnect', () => {
   termWrite(t('msg.disconnected') + '\n', 'sys');
   setConnUi();
 });
+let wasRunning = false;
 hubConn.addEventListener('status', (e) => {
+  if (e.detail.running && !wasRunning) { runOut = ''; hinted = false; }
+  if (!e.detail.running && wasRunning) setTimeout(errorHint, 300);
+  wasRunning = e.detail.running;
   setConnUi();
   $('#btnRun').classList.toggle('running', e.detail.running);
 });
 let stdoutLine = '';
+let runOut = '';
+let hinted = false;
 hubConn.addEventListener('stdout', (e) => {
   termWrite(e.detail, /Traceback|Error/.test(stdoutLine + e.detail) ? 'err' : '');
   stdoutLine = e.detail.split('\n').pop();
+  runOut = (runOut + e.detail).slice(-4000);
 });
+/** 프로그램이 멈춘 뒤, 자주 나는 오류에 도움말을 붙입니다. */
+function errorHint() {
+  if (hinted || !/ENODEV/.test(runOut)) return;
+  const port = (runOut.match(/Port\.([A-F])/) || [])[1] || '?';
+  const tb = runOut.slice(runOut.lastIndexOf('Traceback'));
+  const key = /bluepad|rm_pad/.test(tb) ? 'hint.bluepad' : /rm_esp32|pupremote_hub/.test(tb) ? 'hint.esp32' : /rm_husky/.test(tb) ? 'hint.husky' : '';
+  if (!key) return;
+  hinted = true;
+  termWrite('\n' + t(key, port) + '\n', 'sys');
+}
 
 /**
  * 컴파일해서 허브로 보냅니다.

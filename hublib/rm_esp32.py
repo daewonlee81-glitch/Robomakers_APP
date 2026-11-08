@@ -7,13 +7,30 @@
 #   ESP32:  pr = PUPRemoteSensor(power=True); pr.add_channel('line', 'hhb')
 #   허브:   esp = ESP32(Port.A); esp.add_channel('line', 'hhb'); esp.value('line', 0)
 
+from pybricks.iodevices import PUPDevice
+from pybricks.tools import wait, StopWatch
 from pupremote_hub import PUPRemoteHub
 
 _boards = {}
 
 
+def wait_device(port, ms=4000):
+    """ESP32 가 허브와 연결(LPF2 인사)될 때까지 기다립니다. ms 안에 안 되면 OSError."""
+    sw = StopWatch()
+    while True:
+        try:
+            PUPDevice(port)
+            return
+        except OSError:
+            if sw.time() >= ms:
+                print("ESP32?", port)
+                raise
+        wait(200)
+
+
 class ESP32:
     def __init__(self, port):
+        wait_device(port)
         self.pr = PUPRemoteHub(port)
         self._last = {}
 
