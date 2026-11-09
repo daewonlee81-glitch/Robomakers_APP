@@ -11,7 +11,7 @@ export const LANGS = [
   { code: 'th', name: 'ไทย', blockly: 'th', html: 'th' },
 ];
 
-import COCO_NAMES from './lang/coco.js?v=0.3.7';
+import COCO_NAMES from './lang/coco.js?v=0.3.8';
 
 const KEY = 'rm-lang';
 let lang = 'ko';
@@ -51,9 +51,9 @@ function loadScript(src) {
 export async function initLang() {
   lang = detect();
   const info = LANGS.find((l) => l.code === lang);
-  fallback = (await import('./lang/en.js?v=0.3.7')).default;
-  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js?v=0.3.7`)).default;
-  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js?v=0.3.7`, import.meta.url).href);
+  fallback = (await import('./lang/en.js?v=0.3.8')).default;
+  dict = lang === 'en' ? fallback : (await import(`./lang/${lang}.js?v=0.3.8`)).default;
+  await loadScript(new URL(`../vendor/blockly/msg/${info.blockly}.js?v=0.3.8`, import.meta.url).href);
   document.documentElement.lang = info.html;
   return lang;
 }

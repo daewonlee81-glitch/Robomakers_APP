@@ -84,7 +84,7 @@ main { display: flex; height: calc(100% - 60px); }
 body.panel-closed .panel { margin-right: calc(-1 * var(--panel-w)); }
 .tabs { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
 .tab {
-  border: none; background: none; padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--ink-2);
+  border: none; background: none; padding: 10px 10px; font-size: 14px; font-weight: 700; color: var(--ink-2); white-space: nowrap;
   border-bottom: 3px solid transparent; cursor: pointer;
 }
 .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
@@ -239,3 +239,32 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 #btnHuskyRun { white-space: nowrap; flex: none; }
 #huskyKind { flex: 1 1 auto; min-width: 0; width: 0; }
 #huskyPort { flex: none; }
+
+/* ── 배우기 탭 ── */
+.learn-pick { width: 100%; height: 38px; margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; background: #fff; }
+.learn-intro { margin: 0 0 10px; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+.learn-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.learn-step { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
+.learn-step.on { border-color: var(--brand); background: #EEF3FB; color: var(--brand); }
+.learn-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+.learn-card h4 { margin: 0 0 8px; font-size: 16px; color: var(--ink); }
+.learn-card h5 { margin: 12px 0 4px; font-size: 13px; color: var(--brand); }
+.learn-text { font-size: 13.5px; line-height: 1.7; color: var(--ink); }
+.learn-text b { color: #B45309; }
+.learn-chart { width: 100%; height: auto; background: #F7F9FC; border-radius: 8px; }
+.learn-chart .ax { stroke: #51607A; stroke-width: 1.5; }
+.learn-chart .zero { stroke: #C9D1DD; stroke-dasharray: 3 3; }
+.learn-chart .ln { fill: none; stroke-width: 3; stroke-linejoin: round; }
+.learn-chart .ln.a { stroke: #2E6ABF; }
+.learn-chart .ln.b { stroke: #9AA6BA; }
+.learn-chart .lb { font-size: 11px; fill: #51607A; }
+.learn-chart .lg { font-size: 11px; fill: #1E2A44; font-weight: 700; }
+.learn-actions, .learn-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.learn-nav { justify-content: space-between; }
+.learn-actions button, .learn-nav button { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.learn-actions .primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.learn-nav button:disabled { opacity: .45; cursor: default; }
+.warnnote { background: #FFF4E5; color: #8A4B00; }
+/* 새로 생긴 블록 빛내기 */
+.rm-new > .blocklyPath { stroke: #FFC400 !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px rgba(255, 196, 0, .9)); animation: rmGlow 1s ease-in-out infinite alternate; }
+@keyframes rmGlow { from { stroke-opacity: 1; } to { stroke-opacity: .35; } }

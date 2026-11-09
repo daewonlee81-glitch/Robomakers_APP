@@ -566,6 +566,11 @@
       sel.value = h.hub;
       sel.dispatchEvent(new Event('change'));
     }
+    const mat = document.getElementById('simMat');
+    if (mat && h.mat && [...mat.options].some((o) => o.value === h.mat)) {
+      mat.value = h.mat;
+      mat.dispatchEvent(new Event('change'));
+    }
     const unknown = unknownTypes(h.ws);
     toast(unknown.length ? t('wb.unknown', unknown.join(', ')) : t('wb.fromEditor'));
   }
