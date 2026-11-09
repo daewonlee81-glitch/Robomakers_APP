@@ -1,20 +1,22 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.12';
-import { generatePython, teachNames } from './blocks.js?v=0.3.12';
-import { buildToolbox } from './toolbox.js?v=0.3.12';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.12';
-import { makeZip } from './zip.js?v=0.3.12';
-import { initHelp } from './help.js?v=0.3.12';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.12';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.12';
-import { WebGamepad } from './gamepad.js?v=0.3.12';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.12';
-import { HuskyMonitor } from './huskymon.js?v=0.3.12';
-import { initLearn } from './learn.js?v=0.3.12';
-import { initAiGuide } from './aiguide.js?v=0.3.12';
-import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.12';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.13';
+import { generatePython, teachNames } from './blocks.js?v=0.3.13';
+import { buildToolbox } from './toolbox.js?v=0.3.13';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.13';
+import { makeZip } from './zip.js?v=0.3.13';
+import { initHelp } from './help.js?v=0.3.13';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.13';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.13';
+import { WebGamepad } from './gamepad.js?v=0.3.13';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.13';
+import { HuskyMonitor } from './huskymon.js?v=0.3.13';
+import { initLearn } from './learn.js?v=0.3.13';
+import { initAiGuide } from './aiguide.js?v=0.3.13';
+import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.13';
+import { initTutor } from './tutor.js?v=0.3.13';
+import { initPwa } from './pwa.js?v=0.3.13';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -56,6 +58,7 @@ const theme = Blockly.Theme.defineTheme('robomakers', {
 const workspace = Blockly.inject('blocklyDiv', {
   toolbox: buildToolbox(getHubKey()),
   renderer: 'zelos',
+  media: 'vendor/blockly/media/', // 인터넷 없이도 휴지통·확대 그림·소리가 보이도록
   theme,
   trashcan: true,
   zoom: { controls: true, wheel: true, startScale: 0.8, maxScale: 2, minScale: 0.4 },
@@ -186,7 +189,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.12');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.13');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -253,6 +256,18 @@ menus.forEach((w) =>
   }),
 );
 document.addEventListener('click', () => menus.forEach((x) => (x.querySelector('.menu').hidden = true)));
+// 좁은 화면(태블릿)에서는 프로젝트 이름 칸을 「파일」 메뉴 안으로 옮겨 위쪽 줄이 넘치지 않게
+{
+  const pn = $('#projectName');
+  const home = pn.parentElement;
+  const after = pn.nextElementSibling;
+  const fm = $('#fileMenu');
+  pn.addEventListener('click', (e) => e.stopPropagation());
+  const narrow = matchMedia('(max-width: 1440px)');
+  const place = () => (narrow.matches ? fm.prepend(pn) : home.insertBefore(pn, after));
+  narrow.addEventListener('change', place);
+  place();
+}
 
 // ───────────────────────── 터미널 / 알림 ─────────────────────────
 const term = $('#terminal');
@@ -281,7 +296,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.12`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.13`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -325,7 +340,7 @@ hubConn.addEventListener('disconnect', () => {
 });
 let wasRunning = false;
 hubConn.addEventListener('status', (e) => {
-  if (e.detail.running && !wasRunning) { runOut = ''; hinted = false; }
+  if (e.detail.running && !wasRunning) { runOut = ''; hinted = false; lastErr = null; }
   if (!e.detail.running && wasRunning) setTimeout(errorHint, 300);
   wasRunning = e.detail.running;
   setConnUi();
@@ -335,6 +350,7 @@ let stdoutLine = '';
 let lastSent = ''; // 마지막으로 허브에 보낸 파이썬 (오류 줄 번호 → 코드 줄)
 let runOut = '';
 let hinted = false;
+let lastErr = null; // AI 튜터용: { line, code, text }
 let stdoutHold = '';
 hubConn.addEventListener('stdout', (e) => {
   // 허스키렌즈 모니터 줄(@HK:...)은 터미널에 쓰지 않고 모니터로 보냅니다.
@@ -362,6 +378,8 @@ function errorHint() {
   else if (/AssertionError/.test(tb) && /pupremote_hub/.test(tb)) key = 'hint.esp32mode';
   // 내 프로그램(main.py)의 몇 번째 줄인지 → 그 줄의 코드와 포트를 알려 줌
   const lm = [...tb.matchAll(/File "(?:main|__main__)\.py", line (\d+)/g)].pop();
+  const errLine = (tb.trim().split('\n').pop() || '').trim();
+  if (/Error|ENODEV/.test(errLine)) lastErr = { line: lm ? +lm[1] : 0, code: lm && lastSent ? (lastSent.split('\n')[+lm[1] - 1] || '').trim() : '', text: errLine };
   let lineMsg = '';
   if (lm && lastSent) {
     const code = (lastSent.split('\n')[+lm[1] - 1] || '').trim();
@@ -867,6 +885,15 @@ try {
 receiveFromSim();
 initAiGuide();
 learnUi = initLearn({ workspace, load, hub, hubKey: getHubKey, toast, openSim });
+initTutor({
+  workspace,
+  toast,
+  code: () => (editToggle.checked ? codeEdit.value : currentCode),
+  lastError: () => lastErr,
+  status: () => statusMon.last,
+  hubLabel: () => hub().label,
+});
+initPwa({ toast });
 setConnUi();
 window.addEventListener('resize', () => Blockly.svgResize(workspace));
 initHelp({

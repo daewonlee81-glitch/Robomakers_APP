@@ -39,3 +39,7 @@ s = html.read_text(encoding='utf-8')
 t = re.sub(r'((?:src|href)=")((?:js|css|vendor|img)/[^"?]+)(?:\?v=[^"]*)?(")', lambda m: m.group(1) + m.group(2) + Q + m.group(3), s)
 html.write_text(t, encoding='utf-8')
 print(f'version {ver}: {n} js files updated, index.html updated')
+
+# 3) 오프라인용 파일 목록 (sw.js)
+import subprocess  # noqa: E402
+subprocess.run([sys.executable, str(ROOT / 'tools' / 'build_sw.py')], check=True)

@@ -189,8 +189,22 @@ textarea.code:focus { outline: 2px solid var(--brand); }
   .btn-sim .lbl { display: none; }
   .btn-sim .ico { margin: 0; }
 }
+@media (max-width: 1999px) {
+  .topbar { gap: 8px; }
+  .group { gap: 5px; }
+}
+@media (max-width: 1919px) {
+  .btn-tutor .lbl { display: none; }
+  .btn-tutor .ico { margin: 0; }
+}
 @media (max-width: 1440px) {
   .topbar button, .topbar select, .topbar input { padding: 0 9px; }
+}
+@media (max-width: 1440px) {
+  .topbar { gap: 6px; padding: 0 8px; }
+  .group { gap: 4px; }
+  .topbar button, .topbar select, .topbar input { padding: 0 7px; font-size: 13px; }
+  #fileMenu #projectName { display: block; width: calc(100% - 16px) !important; margin: 8px; height: 34px; }
 }
 @media (max-width: 1300px) {
   #projectName { width: 80px; }
@@ -319,3 +333,77 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .cam-gray-btn { position: absolute; right: 8px; bottom: 8px; z-index: 3; height: 28px; padding: 0 10px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: rgba(20,30,52,.55); color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; backdrop-filter: blur(2px); }
 .cam-gray-btn:hover { background: rgba(20,30,52,.75); }
 .cam-gray-btn[aria-pressed="true"] { background: #fff; color: var(--ink); border-color: #fff; }
+
+/* AI 튜터 · 앱 설치 */
+.btn-tutor { background: #F6F1FF !important; color: #6B3FC2; border-color: #DCCDF7 !important; font-weight: 700 !important; }
+.btn-tutor:hover { background: #ECE2FF !important; }
+.btn-tutor .ico { margin-right: 4px; }
+.btn-tutor[aria-pressed="true"] { background: #6B3FC2 !important; color: #fff; border-color: #6B3FC2 !important; }
+.btn-install { width: 36px; padding: 0 !important; position: relative; }
+.btn-install.can::after { content: ''; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.tutor { position: fixed; top: 60px; right: 0; bottom: 0; z-index: 120; width: min(400px, 100vw); background: #fff; border-left: 1px solid var(--line); box-shadow: -12px 0 30px rgba(20, 30, 52, .14); display: flex; flex-direction: column; font-size: 14px; animation: ttIn .18s ease; }
+.tutor[hidden] { display: none; }
+@keyframes ttIn { from { transform: translateX(30px); opacity: 0; } }
+.tt-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.tt-head b { font-size: 15px; color: #6B3FC2; white-space: nowrap; }
+.tt-status { flex: 1; font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-x { border: 0; background: none; font-size: 16px; cursor: pointer; color: var(--ink-2); width: 30px; height: 30px; border-radius: 8px; }
+.tt-x:hover { background: #F1F4F9; }
+.tt-setup { padding: 8px 12px 0; }
+.tt-none { margin: 0 0 6px; font-size: 13px; color: var(--ink-2); }
+.tt-eng { border: 1px solid var(--line); border-radius: 10px; }
+.tt-eng summary { cursor: pointer; padding: 7px 10px; font-weight: 700; font-size: 13px; }
+.tt-eng > small { display: block; padding: 0 10px 8px; color: var(--ink-2); font-size: 11.5px; }
+.tt-opt { padding: 6px 10px 8px; border-top: 1px dashed var(--line); }
+.tt-opt > b { display: block; font-size: 13px; }
+.tt-opt > small { display: block; color: var(--ink-2); font-size: 11.5px; line-height: 1.45; margin: 2px 0 4px; }
+.tt-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; }
+.tt-row span { flex: 1; }
+.tt-row em { font-style: normal; font-size: 11.5px; color: var(--green); font-weight: 700; }
+.tt-row button, .tt-actions button, .tt-ask button, .pwa-update button, .ins-card button { height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--ink); }
+.tutor button.primary, .pwa-update button.primary, .ins-card button.primary { background: #6B3FC2; border-color: #6B3FC2; color: #fff; }
+.ins-card button.primary { background: var(--brand); border-color: var(--brand); }
+.ins-card button.big { height: 42px; padding: 0 22px; font-size: 15px; margin: 4px 0 8px; }
+.tt-bad { color: #A15C00 !important; }
+.tt-prog { margin: 6px 10px 8px; height: 22px; border-radius: 6px; background: #EFE9FB; position: relative; overflow: hidden; }
+.tt-prog i { position: absolute; inset: 0 auto 0 0; background: #B89AF0; transition: width .3s; }
+.tt-prog span { position: relative; font-size: 11px; line-height: 22px; padding: 0 8px; white-space: nowrap; }
+.tt-actions { display: flex; gap: 6px; padding: 8px 12px; flex-wrap: wrap; }
+.tt-actions button { flex: 1 1 auto; }
+.tt-log { flex: 1; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+.tt-msg { border-radius: 12px; padding: 8px 11px; line-height: 1.55; font-size: 13.5px; max-width: 94%; word-break: break-word; }
+.tt-msg.me { align-self: flex-end; background: #6B3FC2; color: #fff; }
+.tt-msg.ai { align-self: flex-start; background: #F4F0FC; }
+.tt-msg.rule { align-self: flex-start; background: #F4F6FA; border: 1px solid var(--line); }
+.tt-msg.sys { align-self: center; color: var(--ink-2); font-size: 12.5px; background: none; text-align: center; }
+.tt-msg.err { background: #FDECEC; color: #9A1C20; }
+.tt-ln { display: inline-block; min-width: 22px; padding: 0 5px; border-radius: 6px; background: #FFE58A; color: #5A4300; font-weight: 800; font-size: 12px; text-decoration: none; text-align: center; }
+.tt-ln::before { content: 'L'; opacity: .6; }
+.tt-rule { color: inherit; text-decoration: none; display: inline-block; padding: 1px 0; }
+.tt-rule:hover { text-decoration: underline; }
+.tt-rule.lv-error { color: #9A1C20; }
+.tt-dots { color: var(--ink-2); animation: rmGlow 1s ease-in-out infinite alternate; }
+.tt-ask { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.tt-ask input { flex: 1; min-width: 0; height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 13.5px; }
+.tt-ask button { height: 34px; }
+.tt-note { margin: 0; padding: 0 12px 8px; font-size: 11px; color: var(--ink-2); }
+.pwa-update { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 8px; background: var(--ink); color: #fff; padding: 8px 10px 8px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px; }
+.pwa-update button:last-child { background: none; color: #fff; border-color: transparent; }
+/* 설치 창 */
+.ins-card .help-head { margin-bottom: 8px; }
+.ins-card .help-head > div { flex: 1; }
+.ins-x { align-self: flex-start; }
+.ins-state { font-weight: 700; color: #A15C00; }
+.ins-state.ok, .ins-ok { color: #1E7F43; font-weight: 700; }
+@media (max-width: 1200px) {
+  #hubSelect { width: 112px; }
+  #transportSelect { width: 92px; }
+  select.lang { width: 72px; }
+  .brand img { width: 30px; height: 30px; }
+}
+@media (max-width: 1100px) {
+  .topbar button, .topbar select { padding: 0 5px; font-size: 12.5px; }
+  #hubSelect { width: 100px; }
+  #transportSelect { width: 82px; }
+  select.lang { width: 62px; }
+}

@@ -4,7 +4,7 @@
 // 블록마다 고정된 id 를 붙여 두어, 앞 단계에 없던 블록(새로 생긴 블록)을 화면에서 빛나게 표시합니다.
 //   글은 언어 파일의 learn.<수업>.<단계>.* 키에 있습니다 (title · idea · change · try).
 
-import { t } from './i18n.js?v=0.3.12';
+import { t } from './i18n.js?v=0.3.13';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const B = (id, type, fields = {}, inputs = {}, extra = {}) => ({ id, type, fields, inputs, ...extra });

@@ -9,6 +9,13 @@ const GESTURE_MODEL = `${MODELS}/gesture_recognizer/gesture_recognizer/float16/1
 const POSE_MODEL = `${MODELS}/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`;
 const OBJECT_MODEL = `${MODELS}/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite`;
 const EMBED_MODEL = `${MODELS}/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite`;
+/** 인터넷 없이 AI 카메라를 쓰려고 미리 받아 둘 파일 (설치 창의 「AI 카메라 모델도 받아 두기」) */
+export const OFFLINE_URLS = [
+  `${MP_BASE}/vision_bundle.mjs`,
+  `${MP_BASE}/wasm/vision_wasm_internal.js`,
+  `${MP_BASE}/wasm/vision_wasm_internal.wasm`,
+  GESTURE_MODEL, POSE_MODEL, OBJECT_MODEL, EMBED_MODEL,
+];
 
 export const GESTURE_IDS = {
   None: 0, Closed_Fist: 1, Open_Palm: 2, Pointing_Up: 3,
