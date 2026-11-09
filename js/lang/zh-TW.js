@@ -383,7 +383,7 @@ export default {
   "b.rm_eio_pwm": "📡 ESP32 %1 腳位 %2 PWM 強度 %3 %",
   "b.rm_eio_pwm.tip": "調整 LED 亮度、小馬達速度等 (1kHz, 0~100%)。",
   "b.rm_eio_servo": "📡 ESP32 %1 腳位 %2 伺服馬達角度 %3 °",
-  "b.rm_eio_servo.tip": "一般伺服馬達(0~180°)。最好替伺服馬達另外供電 — 只靠集線器連接埠供電可能力量不夠。",
+  "b.rm_eio_servo.tip": "一般伺服馬達(0~180°)。最好替伺服馬達另外供電 — 只靠集線器連接埠供電可能力量不夠。 積木會自動等待伺服馬達轉動的時間（約 0.2 秒/60°，第一次 0.5 秒）再執行下一個積木。",
   "b.rm_eio_np_init": "💡 ESP32 %1 NeoPixel 接在腳位 %2，共 %3 顆",
   "b.rm_eio_np_init.tip": "設定 NeoPixel(WS2812) 燈條。請在顏色積木之前先執行一次。",
   "b.rm_eio_np_set": "💡 ESP32 %1 第 %2 顆 NeoPixel 顏色 R %3 G %4 B %5",

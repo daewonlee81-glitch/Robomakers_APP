@@ -181,6 +181,7 @@
       g[k] = (b) => {
         // 입력 값 안의 블록도 실행되도록 계산은 해 둡니다
         for (const n of ['PIN', 'VAL', 'ANGLE', 'COUNT', 'N', 'R', 'G', 'B']) if (b.getInput(n)) jv(b, n);
+        if (k === 'rm_eio_servo') return `await ${X}.servoWait(api, ${jv(b, 'PIN')}, ${jv(b, 'ANGLE')});\n`;
         if (k === 'rm_eio_din') return [`api.wbNoDev('esp', false)`, F];
         if (k === 'rm_eio_ain') return [`api.wbNoDev('esp', 0)`, F];
         return `api.wbNoDev('esp', 0);\n`;
@@ -234,6 +235,7 @@
   const AI = () => window.__ai?.AI;
   const D = {}; // O · T · C · K 값 배열과 갱신 시각 (Ot …)
   const modes = new Set();
+  let servoAt = {};
   let teach = [];
   let colors = [];
   const unpackEmb = (s) => Float32Array.from(atob(s), (c) => ((c.charCodeAt(0) << 24) >> 24) / 127);
@@ -439,6 +441,15 @@
       if (get('K', (slot - 1) * 4, 0) !== 1) return what === 3 ? 0 : 50;
       return get('K', (slot - 1) * 4 + what, 0);
     },
+    // 허브 rm_esp32.servo 와 같은 시간만큼 기다림 (시뮬레이터에도 같은 박자)
+    async servoWait(api, pin, angle) {
+      api.wbNoDev('esp', 0);
+      const a = Math.max(0, Math.min(180, Math.trunc(Number(angle) || 0)));
+      const prev = servoAt[pin];
+      servoAt[pin] = a;
+      const ms = prev === undefined ? 500 : Math.trunc(Math.abs(a - prev) * 10 / 3);
+      if (ms > 0) await api.wait((ms + 20) / 1000);
+    },
     modes,
     data: D,
   };
@@ -446,6 +457,7 @@
   // 프로그램 시작 시 (시뮬레이터 실행 · 허브로 보내기) 필요한 카메라 기능을 켭니다
   window.__wbKeys = (ws, keys) => {
     modes.clear();
+    servoAt = {};
     try {
       for (const b of ws?.getAllBlocks(false) || []) if (b.isEnabled() && AI_BLOCKS[b.type]) modes.add(AI_BLOCKS[b.type]);
     } catch (e) {

@@ -383,7 +383,7 @@ export default {
   "b.rm_eio_pwm": "📡 ESP32 %1 pin %2 nivel PWM %3 %",
   "b.rm_eio_pwm.tip": "Brillo de un LED, velocidad de un motor pequeño, etc. (1 kHz, 0–100 %).",
   "b.rm_eio_servo": "📡 ESP32 %1 pin %2 ángulo del servo %3 °",
-  "b.rm_eio_servo.tip": "Servo común (0–180°). Mejor alimenta el servo aparte: el puerto del hub solo puede quedarse corto.",
+  "b.rm_eio_servo.tip": "Servo común (0–180°). Mejor alimenta el servo aparte: el puerto del hub solo puede quedarse corto. El bloque espera solo mientras el servo se mueve (unos 0,2 s cada 60°, 0,5 s la primera vez).",
   "b.rm_eio_np_init": "💡 ESP32 %1 NeoPixels en el pin %2, cantidad %3",
   "b.rm_eio_np_init.tip": "Configura una tira NeoPixel (WS2812). Ejecútalo una vez antes de los bloques de color.",
   "b.rm_eio_np_set": "💡 ESP32 %1 color del NeoPixel %2 R %3 G %4 B %5",

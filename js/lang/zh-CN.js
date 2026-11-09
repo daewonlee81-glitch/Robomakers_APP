@@ -383,7 +383,7 @@ export default {
   "b.rm_eio_pwm": "📡 ESP32 %1 引脚 %2 PWM 强度 %3 %",
   "b.rm_eio_pwm.tip": "调节 LED 亮度、小电机速度等 (1kHz, 0~100%)。",
   "b.rm_eio_servo": "📡 ESP32 %1 引脚 %2 舵机角度 %3 °",
-  "b.rm_eio_servo.tip": "普通舵机(0~180°)。最好给舵机单独供电 — 只靠主机端口供电可能力量不够。",
+  "b.rm_eio_servo.tip": "普通舵机(0~180°)。最好给舵机单独供电 — 只靠主机端口供电可能力量不够。 积木会自动等待舵机转动的时间（约 0.2 秒/60°，第一次 0.5 秒）再执行下一个积木。",
   "b.rm_eio_np_init": "💡 ESP32 %1 NeoPixel 接在引脚 %2，共 %3 个",
   "b.rm_eio_np_init.tip": "设置 NeoPixel(WS2812) 灯带。请在颜色积木之前先运行一次。",
   "b.rm_eio_np_set": "💡 ESP32 %1 第 %2 个 NeoPixel 颜色 R %3 G %4 B %5",

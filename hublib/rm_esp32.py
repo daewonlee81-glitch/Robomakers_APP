@@ -51,6 +51,7 @@ class ESP32:
                 self.pr.add_command(name, to_hub_fmt=to_hub, from_hub_fmt=from_hub)
             self._mode = {}
             self._slot = {}
+            self._servo_at = {}
             self.pr.call("pmode", 255, 255)  # ESP32 쪽 핀·네오픽셀 초기화
 
     # ---------- I/O 핀 ----------
@@ -84,9 +85,22 @@ class ESP32:
         pin = self._set_mode(pin, PWM)
         self.pr.call("pwm", pin, max(0, min(100, int(percent))))
 
-    def servo(self, pin, angle):
+    # 서보는 명령만 보내면 바로 다음 줄로 넘어가므로, 움직일 시간만큼 기다립니다.
+    # 약 0.2초 / 60° (부하가 있는 SG90 기준). 처음 움직일 때는 위치를 모르니 0.5초.
+    # 기다리지 않으려면 servo(핀, 각도, False)
+    SERVO_MS_PER_DEG = 10 / 3
+    SERVO_FIRST_MS = 500
+
+    def servo(self, pin, angle, wait_move=True):
         pin = self._set_mode(pin, SERVO)
-        self.pr.call("servo", pin, max(0, min(180, int(angle))))
+        a = max(0, min(180, int(angle)))
+        self.pr.call("servo", pin, a)
+        prev = self._servo_at.get(pin)
+        self._servo_at[pin] = a
+        if wait_move:
+            ms = self.SERVO_FIRST_MS if prev is None else int(abs(a - prev) * self.SERVO_MS_PER_DEG)
+            if ms > 0:
+                wait(ms + 20)
 
     # ---------- 네오픽셀 (번호는 1부터) ----------
     def neopixel_init(self, pin, count):

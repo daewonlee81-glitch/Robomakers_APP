@@ -382,7 +382,7 @@ export default {
   "b.rm_eio_pwm": "📡 ESP32 %1 pin %2 PWM level %3 %",
   "b.rm_eio_pwm.tip": "LED brightness, small motor speed, etc. (1 kHz, 0–100 %).",
   "b.rm_eio_servo": "📡 ESP32 %1 pin %2 servo angle %3 °",
-  "b.rm_eio_servo.tip": "Hobby servo (0–180°). Power the servo separately if possible — the hub port alone may be too weak.",
+  "b.rm_eio_servo.tip": "Hobby servo (0–180°). Power the servo separately if possible — the hub port alone may be too weak. The block waits automatically while the servo moves (about 0.2 s per 60°, 0.5 s the first time).",
   "b.rm_eio_np_init": "💡 ESP32 %1 NeoPixels on pin %2, count %3",
   "b.rm_eio_np_init.tip": "Sets up a NeoPixel (WS2812) strip. Run it once before the colour blocks.",
   "b.rm_eio_np_set": "💡 ESP32 %1 NeoPixel %2 colour R %3 G %4 B %5",

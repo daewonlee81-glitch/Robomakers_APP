@@ -1,17 +1,17 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.6';
-import { generatePython, teachNames } from './blocks.js?v=0.3.6';
-import { buildToolbox } from './toolbox.js?v=0.3.6';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.6';
-import { makeZip } from './zip.js?v=0.3.6';
-import { initHelp } from './help.js?v=0.3.6';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.6';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.6';
-import { WebGamepad } from './gamepad.js?v=0.3.6';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.6';
-import { HuskyMonitor } from './huskymon.js?v=0.3.6';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.7';
+import { generatePython, teachNames } from './blocks.js?v=0.3.7';
+import { buildToolbox } from './toolbox.js?v=0.3.7';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.7';
+import { makeZip } from './zip.js?v=0.3.7';
+import { initHelp } from './help.js?v=0.3.7';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.7';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.7';
+import { WebGamepad } from './gamepad.js?v=0.3.7';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.7';
+import { HuskyMonitor } from './huskymon.js?v=0.3.7';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -181,7 +181,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.6');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.7');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -276,7 +276,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.6`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.7`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
