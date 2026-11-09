@@ -2,7 +2,12 @@
 #
 # 허브 블록이 ESP32 의 GPIO 를 직접 다룹니다: 디지털 출력/입력, 아날로그 입력, PWM, 서보, 네오픽셀.
 # 에디터의 「ESP32 쪽 파일」 다운로드가 이 코드(맨 위 주석 제외)를 main.py 안에 그대로 넣습니다.
-# 따로 복사할 필요는 없습니다. 명령은 허브와 같은 순서로 등록합니다:
+# 따로 복사할 필요는 없습니다. 명령은 허브와 같은 순서로 등록합니다.
+#
+# 규칙: 서보·네오픽셀처럼 ESP32 I/O 기능을 새로 넣을 때도 전부 이 파일에 함수로 넣어 main.py 하나로 묶습니다.
+#   1) 여기 함수 추가  2) hublib/rm_esp32.py 의 IO_CMDS 끝에 (이름, 허브로, 허브에서) 추가 + 메서드
+#   3) js/esp32gen.js 의 IO_CMDS 끝에 같은 줄 추가  — 이름 5글자 이하, 기존 순서는 바꾸지 않음
+# 현재 명령:
 #   p.add_command('pmode', '', 'BB'); p.add_command('inp', '8H', ''); p.add_command('dout', '', 'BB')
 #   p.add_command('pwm', '', 'BB');   p.add_command('servo', '', 'BB'); p.add_command('npx', '', '6B')
 

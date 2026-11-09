@@ -2,7 +2,7 @@
 // 프로토콜 출처: github.com/pybricks/pybricks-code (MIT), Pybricks Profile v1.2 ~ v1.5
 
 /* global MpyCross */
-import { t } from './i18n.js?v=0.3.4';
+import { t } from './i18n.js?v=0.3.5';
 
 export const PYBRICKS_SERVICE = 'c5f50001-8280-46da-89f4-6d8051e4aeef';
 const PYBRICKS_CMD_EVENT = 'c5f50002-8280-46da-89f4-6d8051e4aeef';
@@ -36,7 +36,7 @@ function verGte(v, want) {
 
 // ───────────────────────── 컴파일러 ─────────────────────────
 
-let wasmUrl = new URL('../vendor/mpy-cross/mpy-cross-v6.wasm?v=0.3.4', import.meta.url).href;
+let wasmUrl = new URL('../vendor/mpy-cross/mpy-cross-v6.wasm?v=0.3.5', import.meta.url).href;
 
 /** 파이썬 소스 하나를 .mpy 로 컴파일 */
 export function compileMpy(fileName, source) {
