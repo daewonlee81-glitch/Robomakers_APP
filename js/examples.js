@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.9';
+import { t } from './i18n.js?v=0.3.10';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -131,7 +131,7 @@ export const EXAMPLES = {
   },
   husky: {
     title: () => t('ex.husky'),
-    hubs: ['prime', 'essential'],
+    hubs: ['prime'], // Essential 은 포트가 2개라 바퀴 두 개 + 허스키렌즈를 함께 꽂을 수 없음
     build: (h) => {
       const P = h.sensorPorts.length > 2 ? 'C' : 'B';
       return ws(start([
@@ -146,6 +146,46 @@ export const EXAMPLES = {
           ], [B('rm_drive_stop')]),
         ]),
       ]));
+    },
+  },
+  // SPIKE 앱 워드블럭 예제(허스키렌즈 브리지 라인 따라가기)를 그대로 옮긴 것
+  //   SPIKE 앱 「원시 빨강·초록·파랑」 = 화살표 시작 X · 끝 X · 끝 Y,  「색상」 = ID (라인 있으면 1)
+  huskyline: {
+    title: () => t('ex.huskyline'),
+    hubs: ['prime'],
+    build: (h) => {
+      const P = 'D', L = 'A', R = 'E';
+      const v = (k) => ({ type: 'variables_get', fields: { VAR: { id: 'v_' + k } } });
+      const set = (k, val) => ({ type: 'variables_set', fields: { VAR: { id: 'v_' + k } }, inputs: { VALUE: V(val) } });
+      const num = (n) => ({ type: 'math_number', fields: { NUM: n } });
+      const ar = (op, a, b) => ({ type: 'math_arithmetic', fields: { OP: op }, inputs: { A: V(a), B: V(b) } });
+      const line = (w) => B('rm_husky_line', { PORT: P, WHAT: w });
+      const run = (port, val) => B('rm_motor_run', { PORT: port }, { SPEED: V(val) });
+      const top = start([
+        B('rm_motor_setup', { PORT: L, DIR: 'COUNTERCLOCKWISE' }),
+        B('rm_motor_setup', { PORT: R, DIR: 'CLOCKWISE' }),
+        set('Target', num(160)), set('Kp', num(0.05)), set('Speed', num(20)),
+        {
+          type: 'controls_whileUntil', fields: { MODE: 'UNTIL' },
+          inputs: {
+            BOOL: V({ type: 'logic_compare', fields: { OP: 'GT' }, inputs: { A: V(line('line_end_x')), B: V(num(180)) } }),
+            DO: DO([
+              ifElse({ type: 'logic_negate', inputs: { BOOL: V(B('rm_husky_detected', { PORT: P }, { ID: N(0) })) } },
+                [run(L, num(10)), run(R, num(-10))],
+                [
+                  set('Error', ar('MINUS', line('line_start_x'), v('Target'))),
+                  set('Correction', ar('MULTIPLY', v('Kp'), v('Error'))),
+                  run(L, ar('ADD', v('Speed'), v('Correction'))),
+                  run(R, ar('MINUS', v('Speed'), v('Correction'))),
+                ]),
+              B('rm_wait', {}, { SEC: N(0.01) }),
+            ]),
+          },
+        },
+        B('rm_motor_stop', { PORT: L, MODE: 'brake' }),
+        B('rm_motor_stop', { PORT: R, MODE: 'brake' }),
+      ]);
+      return { ...ws(top), variables: ['Target', 'Kp', 'Speed', 'Error', 'Correction'].map((k) => ({ name: k, id: 'v_' + k })) };
     },
   },
   esp32: {

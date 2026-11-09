@@ -138,6 +138,7 @@ export default {
   'ex.pose': 'AI 攝影機：舉手改變燈光（骨架）',
   'ex.pad': '遊戲手把：坦克式行駛 + A 鍵發聲',
   'ex.husky': 'HuskyLens：跟隨顏色轉向',
+  'ex.huskyline': "HuskyLens：循跡（P 控制 · 與 SPIKE App 範例相同）",
   'ex.esp32': 'ESP32 (PUPRemote)：在螢幕上顯示通道值',
 
   'g.0': '無', 'g.1': '✊ 握拳', 'g.2': '✋ 張開手掌', 'g.3': '☝ 食指向上',

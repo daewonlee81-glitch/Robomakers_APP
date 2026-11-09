@@ -138,6 +138,7 @@ export default {
   'ex.pose': 'Cámara IA: levantar la mano cambia la luz (esqueleto)',
   'ex.pad': 'Mando: conducción tipo tanque + pitido con A',
   'ex.husky': 'HuskyLens: girar siguiendo un color',
+  'ex.huskyline': "HuskyLens: seguir la línea (control P · igual que el ejemplo de la app SPIKE)",
   'ex.esp32': 'ESP32 (PUPRemote): mostrar el valor de un canal',
 
   'g.0': 'ninguno', 'g.1': '✊ puño', 'g.2': '✋ palma abierta', 'g.3': '☝ índice arriba',

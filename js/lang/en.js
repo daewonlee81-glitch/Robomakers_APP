@@ -138,6 +138,7 @@ export default {
   'ex.pose': 'AI Camera: raise a hand to change the light (skeleton)',
   'ex.pad': 'Gamepad: tank drive + beep on A',
   'ex.husky': 'HuskyLens: turn to follow a color',
+  'ex.huskyline': "HuskyLens: line following (P control · same as the SPIKE App example)",
   'ex.esp32': 'ESP32 (PUPRemote): show a channel value',
 
   'g.0': 'none', 'g.1': '✊ fist', 'g.2': '✋ open palm', 'g.3': '☝ pointing up',

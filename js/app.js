@@ -1,19 +1,19 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.9';
-import { generatePython, teachNames } from './blocks.js?v=0.3.9';
-import { buildToolbox } from './toolbox.js?v=0.3.9';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.9';
-import { makeZip } from './zip.js?v=0.3.9';
-import { initHelp } from './help.js?v=0.3.9';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.9';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.9';
-import { WebGamepad } from './gamepad.js?v=0.3.9';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.9';
-import { HuskyMonitor } from './huskymon.js?v=0.3.9';
-import { initLearn } from './learn.js?v=0.3.9';
-import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.9';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.10';
+import { generatePython, teachNames } from './blocks.js?v=0.3.10';
+import { buildToolbox } from './toolbox.js?v=0.3.10';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.10';
+import { makeZip } from './zip.js?v=0.3.10';
+import { initHelp } from './help.js?v=0.3.10';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.10';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.10';
+import { WebGamepad } from './gamepad.js?v=0.3.10';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.10';
+import { HuskyMonitor } from './huskymon.js?v=0.3.10';
+import { initLearn } from './learn.js?v=0.3.10';
+import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.10';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -185,7 +185,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.9');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.10');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -280,7 +280,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.9`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.10`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }

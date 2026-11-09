@@ -1,8 +1,8 @@
 // help.js — 사용 방법 팝업 + 버그 신고
 // 팝업은 아무 곳이나 클릭하면 닫힙니다 (링크·버튼·접기 제목은 제외).
-import { t, getLang } from './i18n.js?v=0.3.9';
-import { APP } from './config.js?v=0.3.9';
-import { getHubKey, hub } from './hubs.js?v=0.3.9';
+import { t, getLang } from './i18n.js?v=0.3.10';
+import { APP } from './config.js?v=0.3.10';
+import { getHubKey, hub } from './hubs.js?v=0.3.10';
 
 const SEEN = 'rm-help-seen-' + APP.version.split('.').slice(0, 2).join('.');
 

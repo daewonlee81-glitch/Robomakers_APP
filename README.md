@@ -1,4 +1,4 @@
-# 로보메이커스 워드블럭 웹 에디터 (v0.3.9)
+# 로보메이커스 워드블럭 웹 에디터 (v0.3.10)
 
 크롬에서 바로 쓰는 **SPIKE Prime · SPIKE Essential · EV3** 용 워드블럭 코딩 프로그램입니다.
 허브에는 **Pybricks 최신 펌웨어(v4)** 가 설치되어 있어야 하며, 블록은 Pybricks 파이썬 코드로 바뀌어 허브에서 실행됩니다.
@@ -127,7 +127,7 @@ python3 tools/sync_cad.py      # → ../mindstorms-cad/wordblock-sync.js 를 다
 
 GitHub Pages 는 파일을 브라우저에 **10분 동안 캐시**합니다. 그래서 새 파일을 올려도 바로 안 보이거나, 옛 파일과 새 파일이 섞여 화면이 이상해질 수 있습니다.
 
-1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.9` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
+1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.10` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
 2. 폴더 전체를 저장소에 올립니다 (`index.html` 이 저장소 맨 위에 있어야 함).
 3. 1~2분 뒤 **강력 새로고침**: Windows·크롬북 `Ctrl + Shift + R`, Mac `Cmd + Shift + R`.
 
