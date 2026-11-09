@@ -7,26 +7,35 @@
 //
 // precache.json 은 tools/build_sw.py 가 만듭니다 (tools/set_version.py 가 함께 실행).
 
-const VERSION = '0.3.13'; // tools/build_sw.py 가 바꿉니다 — 이 줄이 바뀌어야 브라우저가 새 버전을 알아챔
+const VERSION = '0.3.14'; // tools/build_sw.py 가 바꿉니다 — 이 줄이 바뀌어야 브라우저가 새 버전을 알아챔
 const APP_CACHE = 'rm-app-';
 const EXT_CACHE = 'rm-ext-v1';
 const WLLM_CACHE = 'rm-webllm-0.2.87';
 const EXT_HOSTS = ['cdn.jsdelivr.net', 'storage.googleapis.com', 'fonts.gstatic.com'];
 
+/** 앱 파일 저장. onlyMissing = 이미 있는 파일은 건너뜀. 돌려주는 값 = 못 받은 파일 목록 */
+async function fillCache(onlyMissing) {
+  const res = await fetch('precache.json', { cache: 'no-store' });
+  const { files } = await res.json();
+  const cache = await caches.open(APP_CACHE + VERSION);
+  const failed = [];
+  // 하나씩 받아서 일부가 실패해도 나머지는 저장 (실패한 파일은 처음 쓸 때 다시 받음)
+  await Promise.all(files.map(async (f) => {
+    try {
+      if (onlyMissing && (await cache.match(f))) return;
+      const r = await fetch(new Request(f, { cache: 'reload' }));
+      if (r.ok) await cache.put(f, r);
+      else failed.push(f);
+    } catch (e) {
+      failed.push(f);
+    }
+  }));
+  return failed;
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const res = await fetch('precache.json', { cache: 'no-store' });
-    const { files } = await res.json();
-    const cache = await caches.open(APP_CACHE + VERSION);
-    // 하나씩 받아서 일부가 실패해도 나머지는 저장 (실패한 파일은 처음 쓸 때 다시 받음)
-    await Promise.all(files.map(async (f) => {
-      try {
-        const r = await fetch(new Request(f, { cache: 'reload' }));
-        if (r.ok) await cache.put(f, r);
-      } catch (e) {
-        /* 무시 */
-      }
-    }));
+    await fillCache(false);
     await self.skipWaiting();
   })());
 });
@@ -97,6 +106,10 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   const { type, urls } = event.data || {};
   if (type === 'version') return event.source?.postMessage({ type: 'version', version: VERSION });
+  if (type === 'recache') {
+    return event.waitUntil(fillCache(true).then((failed) => event.source?.postMessage({ type: 'recache-done', failed }),
+      () => event.source?.postMessage({ type: 'recache-done', failed: ['precache.json'] })));
+  }
   if (type !== 'prefetch' || !Array.isArray(urls)) return;
   event.waitUntil((async () => {
     const cache = await caches.open(EXT_CACHE);

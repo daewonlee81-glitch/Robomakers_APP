@@ -644,6 +644,8 @@ export default {
   "pwa.noSw": "此網址無法使用離線儲存(請透過 https 網址開啟)。",
   "pwa.ready": "已就緒 — 沒有網路也能開啟。",
   "pwa.preparing": "正在儲存檔案…({0}/{1})稍後再開啟看看。",
+  "pwa.retry": "重新下載",
+  "pwa.retryFail": "有 {0} 個檔案沒有下載成功。請檢查網路後再試。",
   "pwa.cam": "📷 AI 攝影機",
   "pwa.camDesc": "AI 攝影機(手、身體、物體辨識)模型在第一次使用時下載。想離線使用,請事先下載(約 25 MB)。",
   "pwa.camDone": "AI 攝影機模型已儲存",

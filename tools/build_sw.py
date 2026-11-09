@@ -13,10 +13,20 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ver = re.search(r"version: '([^']*)'", (ROOT / 'js' / 'config.js').read_text(encoding='utf-8')).group(1)
 
+# .gitignore 로 올라가지 않는 파일(__pycache__ 등)은 사이트에 없으므로 빼야 함 → git 이 아는 파일만
+import subprocess  # noqa: E402
+try:
+    tracked = set(subprocess.run(['git', 'ls-files', '--cached', '--others', '--exclude-standard'], cwd=ROOT,
+                                 capture_output=True, text=True, check=True).stdout.split('\n'))
+except Exception:
+    tracked = None
+
 files = ['./', 'index.html', 'manifest.webmanifest']
 for d in ['css', 'js', 'hublib', 'esp32', 'img', 'vendor/blockly', 'vendor/mpy-cross']:
     for f in sorted((ROOT / d).rglob('*')):
-        if f.is_file() and not f.name.startswith('.') and f.suffix not in ('.md', '.txt') and f.name != 'LICENSE':
+        if (f.is_file() and not f.name.startswith('.') and f.suffix not in ('.md', '.txt', '.pyc') and f.name != 'LICENSE'
+                and '__pycache__' not in f.parts
+                and (tracked is None or f.relative_to(ROOT).as_posix() in tracked)):
             files.append(f.relative_to(ROOT).as_posix())
 
 sw = ROOT / 'sw.js'

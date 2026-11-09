@@ -643,6 +643,8 @@ export default {
   "pwa.noSw": "Offline storage is not available at this address (open it from an https address).",
   "pwa.ready": "Ready — it opens even without internet.",
   "pwa.preparing": "Saving app files… ({0}/{1}) Check again in a moment.",
+  "pwa.retry": "Download again",
+  "pwa.retryFail": "{0} file(s) could not be downloaded. Check the internet and try again.",
   "pwa.cam": "📷 AI camera",
   "pwa.camDesc": "AI camera models (hands, body, objects) are downloaded the first time you use them. Download them now to use offline (about 25 MB).",
   "pwa.camDone": "AI camera models saved",

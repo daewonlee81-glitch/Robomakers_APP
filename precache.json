@@ -1,5 +1,5 @@
 {
-"version": "0.3.13",
+"version": "0.3.14",
 "files": [
 "./",
 "index.html",
@@ -34,10 +34,6 @@
 "js/toolbox.js",
 "js/tutor.js",
 "js/zip.js",
-"hublib/__pycache__/pupremote_hub.cpython-313.pyc",
-"hublib/__pycache__/rm_esp32.cpython-313.pyc",
-"hublib/__pycache__/rm_husky.cpython-313.pyc",
-"hublib/__pycache__/rm_link.cpython-313.pyc",
 "hublib/bluepad.py",
 "hublib/pupremote_hub.py",
 "hublib/rm_aicam.py",

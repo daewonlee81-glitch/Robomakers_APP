@@ -644,6 +644,8 @@ export default {
   "pwa.noSw": "En esta dirección no se puede guardar sin conexión (ábrela desde una dirección https).",
   "pwa.ready": "Listo — se abre incluso sin internet.",
   "pwa.preparing": "Guardando archivos… ({0}/{1}) Vuelve a mirar en un momento.",
+  "pwa.retry": "Descargar de nuevo",
+  "pwa.retryFail": "No se pudieron descargar {0} archivo(s). Revisa internet y vuelve a intentarlo.",
   "pwa.cam": "📷 Cámara IA",
   "pwa.camDesc": "Los modelos de la cámara IA (manos, cuerpo, objetos) se descargan la primera vez que se usan. Descárgalos ahora para usarlos sin internet (unos 25 MB).",
   "pwa.camDone": "Modelos de la cámara IA guardados",

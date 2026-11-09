@@ -4,9 +4,9 @@
 //  · 📲 버튼: 설치 창 (설치 단추 또는 기기별 방법 · 오프라인 준비 상태 · AI 카메라 모델 받아 두기)
 //  · 새 버전이 올라오면 「다시 불러오기」 알림
 
-import { t } from './i18n.js?v=0.3.13';
-import { APP } from './config.js?v=0.3.13';
-import { OFFLINE_URLS } from './aicam.js?v=0.3.13';
+import { t } from './i18n.js?v=0.3.14';
+import { APP } from './config.js?v=0.3.14';
+import { OFFLINE_URLS } from './aicam.js?v=0.3.14';
 
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
@@ -23,17 +23,26 @@ function platform() {
 }
 
 async function cacheInfo() {
-  const out = { app: 0, total: 0, cam: 0, camTotal: OFFLINE_URLS.length };
+  const out = { app: 0, total: 0, missing: [], cam: 0, camTotal: OFFLINE_URLS.length };
   if (!('caches' in self)) return out;
   try {
-    const list = await (await fetch('precache.json', { cache: 'no-store' })).json();
-    out.total = list.files.length;
-  } catch (e) {
-    out.total = 0; // 인터넷 없음 — 아래 개수만
-  }
-  try {
     const app = await caches.open('rm-app-' + APP.version);
-    out.app = (await app.keys()).length;
+    let files = null;
+    try {
+      files = (await (await fetch('precache.json', { cache: 'no-store' })).json()).files;
+    } catch (e) {
+      files = null; // 인터넷 없음 — 저장된 개수만
+    }
+    if (files) {
+      out.total = files.length;
+      const base = new URL('./', location.href);
+      for (const f of files) {
+        if (await app.match(new URL(f, base).href, { ignoreSearch: true })) out.app += 1;
+        else out.missing.push(f);
+      }
+    } else {
+      out.app = (await app.keys()).length;
+    }
     const ext = await caches.open('rm-ext-v1');
     for (const u of OFFLINE_URLS) if (await ext.match(u)) out.cam += 1;
   } catch (e) {
@@ -62,6 +71,10 @@ export function initPwa({ toast }) {
       if (hadController) showUpdate();
     });
     navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data?.type === 'recache-done') {
+        if (e.data.failed?.length) toast(t('pwa.retryFail', e.data.failed.length), 'err');
+        render();
+      }
       if (e.data?.type === 'prefetch-progress') {
         const el = modal.querySelector('.ins-cam');
         if (el) el.textContent = t('pwa.camProgress', e.data.done, e.data.total);
@@ -103,7 +116,7 @@ export function initPwa({ toast }) {
   async function render() {
     const p = platform();
     const info = await cacheInfo();
-    const ready = !!navigator.serviceWorker?.controller && info.app > 0 && (!info.total || info.app >= info.total);
+    const ready = !!navigator.serviceWorker?.controller && info.app > 0 && !info.missing.length;
     const how = standalone() ? `<p class="ins-ok">✅ ${t('pwa.already')}</p>`
       : deferred ? `<button type="button" class="primary big" data-act="install">📲 ${t('pwa.installNow')}</button>`
       : `<p>${t('pwa.how.' + p)}</p>`;
@@ -113,7 +126,8 @@ export function initPwa({ toast }) {
         <p>${t('pwa.intro')}</p>
         ${how}
         <h3>${t('pwa.offline')}</h3>
-        <p class="ins-state ${ready ? 'ok' : ''}">${!canSw ? t('pwa.noSw') : ready ? '✅ ' + t('pwa.ready') : '⏳ ' + t('pwa.preparing', info.app, info.total || '?')}</p>
+        <p class="ins-state ${ready ? 'ok' : ''}">${!canSw ? t('pwa.noSw') : ready ? '✅ ' + t('pwa.ready') : '⏳ ' + t('pwa.preparing', info.app, info.total || '?')}
+          ${canSw && !ready && navigator.serviceWorker?.controller ? `<button type="button" data-act="retry">⟳ ${t('pwa.retry')}</button>` : ''}</p>
         <h3>${t('pwa.cam')}</h3>
         <p>${t('pwa.camDesc')}</p>
         <p><span class="ins-cam">${info.cam >= info.camTotal ? '✅ ' + t('pwa.camDone') : t('pwa.camProgress', info.cam, info.camTotal)}</span>
@@ -132,6 +146,15 @@ export function initPwa({ toast }) {
       deferred = null;
       btn.classList.remove('can');
       render();
+      return;
+    }
+    if (act === 'retry') {
+      const sw = navigator.serviceWorker.controller || swReg?.active;
+      if (!sw) return;
+      if (!navigator.onLine) return toast(t('pwa.needNet'), 'err');
+      e.target.disabled = true;
+      e.target.textContent = '⏳';
+      sw.postMessage({ type: 'recache' });
       return;
     }
     if (act === 'cam') {
