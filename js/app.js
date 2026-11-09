@@ -1,18 +1,19 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.8';
-import { generatePython, teachNames } from './blocks.js?v=0.3.8';
-import { buildToolbox } from './toolbox.js?v=0.3.8';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.8';
-import { makeZip } from './zip.js?v=0.3.8';
-import { initHelp } from './help.js?v=0.3.8';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.8';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.8';
-import { WebGamepad } from './gamepad.js?v=0.3.8';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.8';
-import { HuskyMonitor } from './huskymon.js?v=0.3.8';
-import { initLearn } from './learn.js?v=0.3.8';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.9';
+import { generatePython, teachNames } from './blocks.js?v=0.3.9';
+import { buildToolbox } from './toolbox.js?v=0.3.9';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.9';
+import { makeZip } from './zip.js?v=0.3.9';
+import { initHelp } from './help.js?v=0.3.9';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.9';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.9';
+import { WebGamepad } from './gamepad.js?v=0.3.9';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.9';
+import { HuskyMonitor } from './huskymon.js?v=0.3.9';
+import { initLearn } from './learn.js?v=0.3.9';
+import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.9';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -184,7 +185,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.8');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.9');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -279,7 +280,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.8`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.9`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -330,6 +331,7 @@ hubConn.addEventListener('status', (e) => {
   $('#btnRun').classList.toggle('running', e.detail.running);
 });
 let stdoutLine = '';
+let lastSent = ''; // 마지막으로 허브에 보낸 파이썬 (오류 줄 번호 → 코드 줄)
 let runOut = '';
 let hinted = false;
 let stdoutHold = '';
@@ -343,7 +345,7 @@ hubConn.addEventListener('stdout', (e) => {
     stdoutHold = tail;
     tail = '';
   }
-  let out = lines.filter((l) => !huskyMon.line(l.replace(/\r$/, ''))).map((l) => l + '\n').join('') + tail;
+  let out = lines.filter((l) => { const x = l.replace(/\r$/, ''); return !huskyMon.line(x) && !statusMon.line(x); }).map((l) => l + '\n').join('') + tail;
   if (!out) return;
   termWrite(out, /Traceback|Error/.test(stdoutLine + out) ? 'err' : '');
   stdoutLine = out.split('\n').pop();
@@ -357,9 +359,29 @@ function errorHint() {
   let key = '';
   if (/ENODEV/.test(tb)) key = /bluepad|rm_pad/.test(tb) ? 'hint.bluepad' : /rm_esp32|pupremote_hub/.test(tb) ? 'hint.esp32' : /rm_husky/.test(tb) ? 'hint.husky' : '';
   else if (/AssertionError/.test(tb) && /pupremote_hub/.test(tb)) key = 'hint.esp32mode';
-  if (!key) return;
+  // 내 프로그램(main.py)의 몇 번째 줄인지 → 그 줄의 코드와 포트를 알려 줌
+  const lm = [...tb.matchAll(/File "(?:main|__main__)\.py", line (\d+)/g)].pop();
+  let lineMsg = '';
+  if (lm && lastSent) {
+    const code = (lastSent.split('\n')[+lm[1] - 1] || '').trim();
+    if (code) lineMsg = t('hint.line', lm[1], code);
+  }
+  if (!key && /ENODEV/.test(tb)) {
+    const lp = (lineMsg.match(/Port\.(\w+)/) || [])[1] || port;
+    key = 'hint.enodev';
+    hinted = true;
+    termWrite('\n' + (lineMsg ? lineMsg + '\n' : '') + t(key, lp) + '\n', 'sys');
+    return;
+  }
+  if (!key) {
+    if (lineMsg && /Error/.test(tb)) {
+      hinted = true;
+      termWrite('\n' + lineMsg + '\n', 'sys');
+    }
+    return;
+  }
   hinted = true;
-  termWrite('\n' + t(key, port) + '\n', 'sys');
+  termWrite('\n' + (lineMsg ? lineMsg + '\n' : '') + t(key, port) + '\n', 'sys');
 }
 
 /**
@@ -378,6 +400,7 @@ async function sendToHub(andRun, override) {
     $('#btnUpload').disabled = true;
     termWrite('\n' + t('msg.compiling') + '\n', 'sys');
     const prog = await buildProgram(src, loadLib);
+    lastSent = src;
     termWrite(t('msg.downloading', prog.data.length, prog.modules.join(', ')) + '\n', 'sys');
     bar.hidden = false;
     if (andRun) {
@@ -448,6 +471,25 @@ $('#btnHuskyRun').addEventListener('click', async () => {
   }
   sendToHub(true, huskyMonitorProgram($('#huskyPort').value));
 });
+
+// ───────────────────────── 로봇 상태 (배터리 · 포트) ─────────────────────────
+const statusMon = new StatusMonitor($('#statusView'), { hub, code: () => (editToggle.checked ? codeEdit.value : currentCode) });
+function renderStatusHead() {
+  $('#statusHub').textContent = hubConn.connected
+    ? `${hubConn.info.name} · Pybricks ${hubConn.info.firmware || '?'}` : t('top.notConnected');
+  statusMon.setLowFlag(hubConn.connected && !!(hubConn.status & 1));
+  statusMon.render();
+}
+hubConn.addEventListener('status', renderStatusHead);
+$('#btnStatusRun').addEventListener('click', async () => {
+  if (!hubConn.connected) return toast(t('husky.needConn'), 'err');
+  if (hubConn.running) {
+    await hubConn.stop().catch(() => {});
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  sendToHub(true, statusProgram(hub()));
+});
+document.querySelector('.tab[data-pane="paneStatus"]').addEventListener('click', renderStatusHead);
 
 const run = () => sendToHub(true);
 $('#btnRun').addEventListener('click', run);

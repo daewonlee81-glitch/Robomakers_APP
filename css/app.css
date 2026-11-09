@@ -82,9 +82,10 @@ main { display: flex; height: calc(100% - 60px); }
   border-left: 1px solid var(--line); transition: margin-right .2s ease;
 }
 body.panel-closed .panel { margin-right: calc(-1 * var(--panel-w)); }
-.tabs { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: 0; padding: 8px 6px 0; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
-  border: none; background: none; padding: 10px 10px; font-size: 14px; font-weight: 700; color: var(--ink-2); white-space: nowrap;
+  border: none; background: none; padding: 10px 7px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; flex: none;
   border-bottom: 3px solid transparent; cursor: pointer;
 }
 .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
@@ -268,3 +269,24 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 /* 새로 생긴 블록 빛내기 */
 .rm-new > .blocklyPath { stroke: #FFC400 !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px rgba(255, 196, 0, .9)); animation: rmGlow 1s ease-in-out infinite alternate; }
 @keyframes rmGlow { from { stroke-opacity: 1; } to { stroke-opacity: .35; } }
+
+/* ── 상태 탭 ── */
+#statusView { display: flex; flex-direction: column; gap: 8px; }
+.st-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.st-h { font-weight: 800; font-size: 14px; color: var(--ink); margin-bottom: 6px; }
+.st-ports-h { margin: 4px 0 0; }
+.st-row { font-size: 13px; color: var(--ink-2); }
+.st-row b { color: var(--ink); font-size: 16px; }
+.st-batbar { height: 12px; border-radius: 6px; background: #EEF1F6; overflow: hidden; margin-bottom: 6px; }
+.st-batbar i { display: block; height: 100%; border-radius: 6px; }
+.st-batbar i.good { background: var(--green); } .st-batbar i.mid { background: #F5B400; } .st-batbar i.bad { background: var(--red); }
+.st-ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; }
+.st-port { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 74px; }
+.st-port.empty { background: #F7F9FC; color: var(--ink-2); }
+.st-port.bad { border-color: var(--red); background: #FFF5F5; }
+.st-pn { font-weight: 900; font-size: 18px; color: var(--brand); line-height: 1; }
+.st-pk { font-weight: 700; font-size: 13px; margin-top: 4px; }
+.st-pv { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.st-pw { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
+.st-pn2 { font-size: 11px; color: #8A95A8; margin-top: 2px; }
+.st-warn { font-size: 12px; color: #B42318; font-weight: 700; margin-top: 4px; }

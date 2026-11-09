@@ -1,4 +1,4 @@
-# 로보메이커스 워드블럭 웹 에디터 (v0.3.8)
+# 로보메이커스 워드블럭 웹 에디터 (v0.3.9)
 
 크롬에서 바로 쓰는 **SPIKE Prime · SPIKE Essential · EV3** 용 워드블럭 코딩 프로그램입니다.
 허브에는 **Pybricks 최신 펌웨어(v4)** 가 설치되어 있어야 하며, 블록은 Pybricks 파이썬 코드로 바뀌어 허브에서 실행됩니다.
@@ -83,6 +83,17 @@
 
 같은 안내가 사용 방법 팝업 「LMS-ESP32 연결」, zip 안의 README.txt, 생성된 main.py 맨 위 주석에 7개 언어로 들어 있습니다.
 
+### 로봇 상태 확인 — 배터리 · 포트 (v0.3.9)
+
+오른쪽 **상태** 탭 → **▶ 상태 확인**: 허브에서 `hublib/rm_status.py` 를 쓰는 작은 프로그램이 돌며 0.25초마다 `@ST:` 줄을 보냅니다 (터미널에는 안 보임, 지금 고른 슬롯에 덮어씀, ■ 정지로 끝).
+
+- 배터리 전압·전류·어림 % (SPIKE 6.8~8.3 V, EV3 6.5~9.0 V 기준), Pybricks 상태의 「배터리 부족」 신호
+- 포트마다 꽂힌 장치: 모터(각도·속도) · 색 센서(반사값) · 거리 센서 · 힘 센서 · (EV3) 자이로·터치·적외선 · 그 밖의 장치 번호 · 비어 있음. 빈 포트는 2초마다 다시 살펴 실행 중에 꽂은 장치도 나타남
+- **지금 블록 프로그램이 쓰는 포트와 비교**해 다르면 ⚠ (예: 「프로그램은 모터인데 실제는 비어 있음」). 허스키렌즈·ESP32 브리지는 색 센서나 다른 장치 번호로 보임
+- 허브 방향(방향·앞뒤·좌우 기울기, SPIKE)
+- 오류 도움말: 내 프로그램에서 멈추면 「💡 N번째 줄에서 멈췄습니다: <그 줄 코드>」 를 보여 주고, `ENODEV` 면 그 줄의 포트와 「상태」 탭 안내를 덧붙임
+- 글: `tools/status_text.py` (7개 언어)
+
 ### 단계별 배우기 — 라인 트레이싱 · 자이로 주행 (v0.3.8)
 
 오른쪽 **배우기** 탭, 위쪽에서 수업을 고릅니다.
@@ -116,7 +127,7 @@ python3 tools/sync_cad.py      # → ../mindstorms-cad/wordblock-sync.js 를 다
 
 GitHub Pages 는 파일을 브라우저에 **10분 동안 캐시**합니다. 그래서 새 파일을 올려도 바로 안 보이거나, 옛 파일과 새 파일이 섞여 화면이 이상해질 수 있습니다.
 
-1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.8` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
+1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.9` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
 2. 폴더 전체를 저장소에 올립니다 (`index.html` 이 저장소 맨 위에 있어야 함).
 3. 1~2분 뒤 **강력 새로고침**: Windows·크롬북 `Ctrl + Shift + R`, Mac `Cmd + Shift + R`.
 
@@ -151,6 +162,7 @@ js/zip.js           .zip 다운로드
 tests/              검증 도구 (가짜 허브 실행기, 공식 가상 허브 실행기, 브라우저 e2e)
 js/lessons.js       단계별 배우기 프로그램 (라인 트레이싱 4단계, 자이로 주행 7단계)
 js/learn.js         「배우기」 탭 화면
+js/statusmon.js     「상태」 탭 화면 (배터리 · 포트 · 프로그램과 비교)
 tools/learn_text.py 「배우기」 글 7개 언어 (자이로 글: tools/learn_text_gyro.py)
 tools/sync_cad.py   에디터 → 캐드 시뮬레이터 동기화 (tools/cad/wordblock-sync.tpl.js 틀)
 hublib/             허브로 함께 내려가는 파이썬 모듈 (사용한 것만 자동 포함)
@@ -159,6 +171,7 @@ hublib/             허브로 함께 내려가는 파이썬 모듈 (사용한 �
   rm_pad.py         게임패드 통합 클래스
   rm_husky.py       허스키렌즈
   rm_esp32.py       LMS-ESP32 (PUPRemote 래퍼)
+  rm_status.py      로봇 상태 확인 (배터리 · 포트 · 방향) — 「상태」 탭
   pupremote_hub.py  Anton's Mindstorms 원본 (GPL-3.0)
   bluepad.py        Anton's Mindstorms 원본 (GPL-3.0)
 vendor/             Blockly 11 + 기본 메시지 7개 언어 (Apache-2.0), mpy-cross v6 WASM (MIT)
