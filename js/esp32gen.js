@@ -1,7 +1,7 @@
 // esp32gen.js — 허브 프로그램의 「ESP32 채널/명령 등록」 블록에 맞는 LMS-ESP32 쪽 main.py 를 만듭니다.
 // 허브 쪽 PUPRemoteHub 는 모드 순서·이름·크기를 ESP32 쪽과 비교하므로, 같은 순서로 등록해 주는 것이 중요합니다.
-import { t } from './i18n.js?v=0.3.3';
-import { APP } from './config.js?v=0.3.3';
+import { t } from './i18n.js?v=0.3.4';
+import { APP } from './config.js?v=0.3.4';
 
 const RE = /\besp32_([A-F])\.add_(channel|command)\('((?:[^'\\]|\\.)*)', '((?:[^'\\]|\\.)*)'(?:, '((?:[^'\\]|\\.)*)')?\)/g;
 
@@ -48,8 +48,16 @@ export function esp32Modes(code) {
   return ports;
 }
 
+/** rm_io.py 에서 맨 위 설명 주석을 뺀 본문 */
+export function ioBody(src) {
+  const lines = src.replace(/\r/g, '').split('\n');
+  let i = 0;
+  while (i < lines.length && (lines[i].startsWith('#') || lines[i].trim() === '')) i++;
+  return lines.slice(i).join('\n').trimEnd();
+}
+
 /** 포트 하나의 ESP32 main.py */
-export function esp32Main(port, modes, io = false) {
+export function esp32Main(port, modes, io = false, ioSrc = '') {
   const L = [];
   L.push(`# ${t('esp.gen.head', port)}`);
   L.push(`# ${t('esp.gen.copy')}`);
@@ -57,8 +65,16 @@ export function esp32Main(port, modes, io = false) {
   L.push('');
   L.push('import lpf2');
   L.push('from pupremote import PUPRemoteSensor');
-  if (io) L.push('from rm_io import pmode, inp, dout, pwm, servo, npx');
   L.push('');
+  if (io) {
+    // rm_io.py 를 main.py 안에 그대로 넣습니다 (파일 하나 덜 복사, 명령 함수가 __main__ 에 있어야 eval 로 찾힘)
+    L.push('# ' + '-'.repeat(60));
+    L.push(`# ${t('esp.gen.ioCode')}`);
+    L.push('# ' + '-'.repeat(60));
+    L.push(ioBody(ioSrc));
+    L.push('# ' + '-'.repeat(60));
+    L.push('');
+  }
   L.push("print('lpf2', lpf2.__version__)");
   L.push('');
   for (const m of modes.filter((x) => x.kind === 'command')) {
@@ -103,20 +119,19 @@ export async function esp32Files(code, folder) {
   const io = esp32IoPorts(code);
   const keys = Object.keys(ports).sort();
   const files = [];
-  const libs = (dir, port) => {
+  const libs = (dir) => {
     files.push({ name: `${dir}/lpf2.py`, data: lpf2 }, { name: `${dir}/pupremote.py`, data: pupremote }, { name: `${dir}/LICENSE-PUPRemote.txt`, data: license });
-    if (io.has(port)) files.push({ name: `${dir}/rm_io.py`, data: rmio });
   };
   if (!keys.length) {
     files.push({ name: `${folder}/main.py`, data: await get('main.py') });
     libs(folder);
   } else if (keys.length === 1) {
-    files.push({ name: `${folder}/main.py`, data: esp32Main(keys[0], ports[keys[0]], io.has(keys[0])) });
-    libs(folder, keys[0]);
+    files.push({ name: `${folder}/main.py`, data: esp32Main(keys[0], ports[keys[0]], io.has(keys[0]), rmio) });
+    libs(folder);
   } else {
     for (const k of keys) {
-      files.push({ name: `${folder}/port_${k}/main.py`, data: esp32Main(k, ports[k], io.has(k)) });
-      libs(`${folder}/port_${k}`, k);
+      files.push({ name: `${folder}/port_${k}/main.py`, data: esp32Main(k, ports[k], io.has(k), rmio) });
+      libs(`${folder}/port_${k}`);
     }
   }
   files.push({ name: `${folder}/README.txt`, data: t('dl.esp32Readme') + '\n' });

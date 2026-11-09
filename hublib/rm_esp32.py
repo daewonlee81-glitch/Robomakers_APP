@@ -14,7 +14,7 @@ from pupremote_hub import PUPRemoteHub
 _boards = {}
 
 
-def wait_device(port, ms=4000):
+def wait_device(port, ms=8000):
     """ESP32 가 허브와 연결(LPF2 인사)될 때까지 기다립니다. ms 안에 안 되면 OSError."""
     sw = StopWatch()
     while True:

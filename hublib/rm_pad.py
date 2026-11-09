@@ -52,12 +52,12 @@ class Gamepad:
             from pybricks.iodevices import PUPDevice
             from pybricks.tools import wait, StopWatch
             sw = StopWatch()
-            while True:  # ESP32 가 켜지고 허브와 인사할 때까지 최대 4초
+            while True:  # ESP32 가 켜지고 허브와 인사할 때까지 최대 8초
                 try:
                     PUPDevice(port)
                     break
                 except OSError:
-                    if sw.time() >= 4000:
+                    if sw.time() >= 8000:
                         print("ESP32?", port)
                         raise
                 wait(200)

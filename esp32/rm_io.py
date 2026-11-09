@@ -1,8 +1,8 @@
 # rm_io.py — 로보메이커스 워드블럭 「ESP32 핀」 블록용 LMS-ESP32 I/O
 #
 # 허브 블록이 ESP32 의 GPIO 를 직접 다룹니다: 디지털 출력/입력, 아날로그 입력, PWM, 서보, 네오픽셀.
-# main.py 에서 아래 6개 함수를 import 하고, 허브와 같은 순서로 add_command 합니다.
-#   from rm_io import pmode, inp, dout, pwm, servo, npx
+# 에디터의 「ESP32 쪽 파일」 다운로드가 이 코드(맨 위 주석 제외)를 main.py 안에 그대로 넣습니다.
+# 따로 복사할 필요는 없습니다. 명령은 허브와 같은 순서로 등록합니다:
 #   p.add_command('pmode', '', 'BB'); p.add_command('inp', '8H', ''); p.add_command('dout', '', 'BB')
 #   p.add_command('pwm', '', 'BB');   p.add_command('servo', '', 'BB'); p.add_command('npx', '', '6B')
 
