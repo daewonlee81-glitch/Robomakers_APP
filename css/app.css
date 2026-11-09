@@ -290,3 +290,25 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .st-pw { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
 .st-pn2 { font-size: 11px; color: #8A95A8; margin-top: 2px; }
 .st-warn { font-size: 12px; color: #B42318; font-weight: 700; margin-top: 4px; }
+
+/* ── AI 학습 방법 안내 ── */
+.guide-btn { height: 30px; padding: 0 10px; border: 1px solid #C9D7F0; background: #F2F6FD; color: var(--brand); border-radius: 8px; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.guide-btn:hover { background: #E4EDFB; }
+.guide-btn.sm { height: 24px; padding: 0 8px; font-size: 12px; margin-left: auto; }
+.learn h4:has(.guide-btn) { display: flex; align-items: center; gap: 8px; }
+.aig-inline { border: 1px solid #C9D7F0; border-radius: 12px; background: #fff; margin: 10px 0; }
+.aig-inline > summary { cursor: pointer; padding: 10px 12px; font-weight: 800; color: var(--brand); list-style-position: inside; }
+.aig-inline > summary::before { content: '📖 '; }
+.aig-inline[open] > summary { border-bottom: 1px solid var(--line); }
+.aig-body { padding: 4px 14px 12px; }
+.aig-body .guide { font-size: 13.5px; }
+.guide { line-height: 1.7; font-size: 14px; color: var(--ink); }
+.guide h4 { margin: 18px 0 6px; font-size: 15.5px; color: #1E4C99; scroll-margin-top: 8px; }
+.guide h4:first-child { margin-top: 4px; }
+.guide ol, .guide ul { padding-left: 22px; margin: 6px 0; }
+.guide li { margin: 4px 0; }
+.guide code { background: #EEF3FB; color: #1E4C99; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; font-family: inherit; font-weight: 700; }
+.guide .tip { background: #F2F6FD; border-left: 4px solid var(--brand); padding: 8px 12px; border-radius: 0 9px 9px 0; }
+.guide .muted { color: var(--ink-2); font-size: 12.5px; }
+.aig-svg { width: 100%; max-width: 420px; display: block; margin: 6px auto; background: #F7F9FC; border-radius: 10px; }
+.aig-svg .lb { font-size: 12px; font-weight: 700; }
