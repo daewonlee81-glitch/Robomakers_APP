@@ -1,17 +1,17 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.5';
-import { generatePython, teachNames } from './blocks.js?v=0.3.5';
-import { buildToolbox } from './toolbox.js?v=0.3.5';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.5';
-import { makeZip } from './zip.js?v=0.3.5';
-import { initHelp } from './help.js?v=0.3.5';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.5';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.5';
-import { WebGamepad } from './gamepad.js?v=0.3.5';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.5';
-import { HuskyMonitor } from './huskymon.js?v=0.3.5';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.6';
+import { generatePython, teachNames } from './blocks.js?v=0.3.6';
+import { buildToolbox } from './toolbox.js?v=0.3.6';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.6';
+import { makeZip } from './zip.js?v=0.3.6';
+import { initHelp } from './help.js?v=0.3.6';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.6';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.6';
+import { WebGamepad } from './gamepad.js?v=0.3.6';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.6';
+import { HuskyMonitor } from './huskymon.js?v=0.3.6';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -181,7 +181,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.5');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.6');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -276,7 +276,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.5`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.6`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -742,6 +742,46 @@ cam.onUpdate = (c) => {
   pumpSend();
 };
 
+// ───────────────────────── 시뮬레이터 (로보메이커스 캐드) ─────────────────────────
+// 같은 사이트(github.io)라서 localStorage 로 블록을 주고받습니다.
+const HANDOFF = 'rm-wb-handoff';
+const SIM_URL = '../mindstorms-cad/?from=wordblock';
+
+$('#btnSim').onclick = () => {
+  save();
+  try {
+    localStorage.setItem(HANDOFF, JSON.stringify({
+      v: 1, from: 'editor', hub: getHubKey(), name: $('#projectName').value,
+      ws: Blockly.serialization.workspaces.save(workspace), t: Date.now(),
+    }));
+  } catch (e) {
+    toast(String(e.message || e), 'err');
+    return;
+  }
+  window.open(SIM_URL, 'rm-cad');
+};
+
+function receiveFromSim() {
+  if (!/[?&]from=sim\b/.test(location.search)) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  let h = null;
+  try {
+    h = JSON.parse(localStorage.getItem(HANDOFF) || 'null');
+  } catch (e) {
+    h = null;
+  }
+  if (!h || h.from !== 'sim' || !h.ws || Date.now() - (h.t || 0) > 10 * 60 * 1000) return;
+  localStorage.removeItem(HANDOFF);
+  if (h.hub && HUBS[h.hub] && h.hub !== getHubKey()) selectHub(h.hub);
+  try {
+    load(h.ws);
+    save();
+    toast(t('msg.fromSim'));
+  } catch (e) {
+    toast(String(e.message || e), 'err');
+  }
+}
+
 // ───────────────────────── 시작 ─────────────────────────
 if (!('bluetooth' in navigator) && !('usb' in navigator)) {
   $('#browserWarn').hidden = false;
@@ -758,6 +798,7 @@ try {
 } catch (e) {
   load(emptyProgram());
 }
+receiveFromSim();
 setConnUi();
 window.addEventListener('resize', () => Blockly.svgResize(workspace));
 initHelp({

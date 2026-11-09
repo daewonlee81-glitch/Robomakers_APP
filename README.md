@@ -1,4 +1,4 @@
-# 로보메이커스 워드블럭 웹 에디터 (v0.3.5)
+# 로보메이커스 워드블럭 웹 에디터 (v0.3.6)
 
 크롬에서 바로 쓰는 **SPIKE Prime · SPIKE Essential · EV3** 용 워드블럭 코딩 프로그램입니다.
 허브에는 **Pybricks 최신 펌웨어(v4)** 가 설치되어 있어야 하며, 블록은 Pybricks 파이썬 코드로 바뀌어 허브에서 실행됩니다.
@@ -81,11 +81,26 @@
 
 같은 안내가 사용 방법 팝업 「LMS-ESP32 연결」, zip 안의 README.txt, 생성된 main.py 맨 위 주석에 7개 언어로 들어 있습니다.
 
+### 시뮬레이터 연동 — 로보메이커스 캐드 (v0.3.6)
+
+- 위쪽 **🧪 시뮬레이터** 버튼: 지금 블록과 허브 종류를 들고 [로보메이커스 캐드](https://daewonlee81-glitch.github.io/mindstorms-cad/) 시뮬레이터 화면으로 바로 갑니다 (새 탭 `rm-cad`).
+- 시뮬레이터의 **✏️ 워드블럭 에디터로** 버튼: 시뮬레이터에서 고친 블록을 에디터로 다시 가져옵니다.
+- 두 사이트가 같은 주소(github.io)라 브라우저 저장소(`rm-wb-handoff`)로 주고받습니다. 사물 학습·색 학습 결과도 같은 저장소를 쓰므로, **학습은 에디터 AI 카메라 탭에서** 하면 시뮬레이터에서도 그대로 씁니다.
+- 시뮬레이터에서 새 블록: 사물 인식·사물 학습·색 인식·색 학습은 카메라로 실제 동작, ESP32 핀 블록은 「ESP32 없음」 안내 후 값 0 (실제 허브로 보내면 동작).
+
+**에디터를 고친 뒤 시뮬레이터에도 반영하는 법** — 캐드 저장소를 옆 폴더(`../mindstorms-cad`)에 받아 두고:
+
+```
+python3 tools/sync_cad.py      # → ../mindstorms-cad/wordblock-sync.js 를 다시 만듦 (블록 문구 · 허브 라이브러리)
+```
+
+새 블록을 시뮬레이터로 더 옮기려면 `tools/cad/wordblock-sync.tpl.js`(블록 정의·생성기·도구 상자)와 `tools/sync_cad.py` 의 `WANT`(가져올 문구)를 고칩니다. 캐드의 `app.js` 는 압축된 빌드 파일이라 훅 네 줄만 들어 있습니다: `window.__wb` 에 내부 함수 노출, `window.__wbKeys`(카메라 기능 켜기), `window.__wbFrames`(실제 허브로 O·T·C·K 값 중계), `window.__wbTb`(도구 상자).
+
 ## 업데이트 올리는 법 (GitHub Pages)
 
 GitHub Pages 는 파일을 브라우저에 **10분 동안 캐시**합니다. 그래서 새 파일을 올려도 바로 안 보이거나, 옛 파일과 새 파일이 섞여 화면이 이상해질 수 있습니다.
 
-1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.5` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
+1. 코드를 고쳤다면 `python3 tools/set_version.py 0.3.6` 처럼 **버전을 올립니다**. 모든 파일 주소 뒤에 `?v=버전` 이 붙어, 브라우저가 새 파일을 바로 받습니다.
 2. 폴더 전체를 저장소에 올립니다 (`index.html` 이 저장소 맨 위에 있어야 함).
 3. 1~2분 뒤 **강력 새로고침**: Windows·크롬북 `Ctrl + Shift + R`, Mac `Cmd + Shift + R`.
 
@@ -118,6 +133,7 @@ js/help.js          사용 방법 팝업 + 버그 신고
 js/config.js        버전·버그 신고 연락처
 js/zip.js           .zip 다운로드
 tests/              검증 도구 (가짜 허브 실행기, 공식 가상 허브 실행기, 브라우저 e2e)
+tools/sync_cad.py   에디터 → 캐드 시뮬레이터 동기화 (tools/cad/wordblock-sync.tpl.js 틀)
 hublib/             허브로 함께 내려가는 파이썬 모듈 (사용한 것만 자동 포함)
   rm_link.py        웹 → 허브 데이터 수신 (stdin 한 줄 프레임)
   rm_aicam.py       AI 카메라 값

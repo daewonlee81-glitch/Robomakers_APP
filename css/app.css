@@ -66,6 +66,9 @@ progress { width: 90px; height: 8px; accent-color: var(--green); }
 #downloadMenu button { height: auto !important; padding: 9px 12px !important; }
 #downloadMenu b { display: block; font-size: 14px; }
 #downloadMenu small { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); margin-top: 2px; }
+.btn-sim { background: #F1FBF8 !important; color: #00806D; border-color: #BFE8DF !important; font-weight: 700 !important; white-space: nowrap; }
+.btn-sim:hover { background: #E0F5EF !important; }
+.btn-sim .ico { margin-right: 4px; }
 .btn-download { background: #EEF3FB !important; color: var(--brand); border-color: #CFDDF2 !important; }
 .btn-download:hover { background: #E1EAF8 !important; }
 select.lang { width: 104px; }
@@ -182,6 +185,8 @@ textarea.code:focus { outline: 2px solid var(--brand); }
   .brand div { display: none; }
   .btn-upload .lbl { display: none; }
   .btn-upload .ico { margin: 0; }
+  .btn-sim .lbl { display: none; }
+  .btn-sim .ico { margin: 0; }
 }
 @media (max-width: 1440px) {
   .topbar button, .topbar select, .topbar input { padding: 0 9px; }
