@@ -660,4 +660,12 @@ export default {
   "pwa.needNet": "받으려면 인터넷 연결이 필요합니다.",
   "pwa.wentOffline": "📴 인터넷이 끊겼어요. 코딩과 허브 연결은 계속 됩니다.",
   "pwa.backOnline": "인터넷에 다시 연결되었습니다.",
+  "b.rm_motor_pair_run": "모터 %1 을 %2 %, 모터 %3 을 %4 % 속도로 계속 돌리기",
+  "b.rm_motor_pair_run.tip": "두 모터를 한 번에 돌립니다. 속도 100% = 초당 1000도. 서로 다른 속도를 주면 로봇이 돕니다.",
+  "b.rm_motor_pair_setup": "모터 %1 방향 %2, 모터 %3 방향 %4 로 설정",
+  "b.rm_motor_pair_setup.tip": "두 모터가 + 속도일 때 도는 방향을 한 번에 정합니다. 양쪽 바퀴 모터는 보통 서로 반대로 정해야 둘 다 앞으로 갑니다.",
+  "ex.speedtest": "측정: 주행 최고 속도 · 회전 최고 속도 재기",
+  "ex.speedtest.start": "최고 속도 재기 — 앞이 1 m 이상 비어 있는지 확인하세요",
+  "ex.speedtest.v": "직진 최고 속도: ",
+  "ex.speedtest.w": "회전 최고 속도: ",
 };

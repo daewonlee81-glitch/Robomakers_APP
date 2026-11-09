@@ -661,4 +661,12 @@ export default {
   "pwa.needNet": "下载需要网络连接。",
   "pwa.wentOffline": "📴 网络已断开。编程和主机连接仍可使用。",
   "pwa.backOnline": "已重新联网。",
+  "b.rm_motor_pair_run": "电机 %1 以 %2 %、电机 %3 以 %4 % 速度持续转动",
+  "b.rm_motor_pair_run.tip": "同时转动两个电机。速度 100% = 每秒 1000 度。两个速度不同时机器人会转弯。",
+  "b.rm_motor_pair_setup": "设置电机 %1 方向为 %2、电机 %3 方向为 %4",
+  "b.rm_motor_pair_setup.tip": "一次设定两个电机正速度时的转动方向。左右轮电机通常要设成相反方向,才能一起前进。",
+  "ex.speedtest": "测量:最高行驶速度 · 最高转弯速度",
+  "ex.speedtest.start": "测量最高速度 — 请确认前方至少有 1 米空地",
+  "ex.speedtest.v": "直行最高速度: ",
+  "ex.speedtest.w": "转弯最高速度: ",
 };

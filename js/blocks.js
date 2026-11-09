@@ -1,9 +1,9 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.14';
-import { t, cocoLabel } from './i18n.js?v=0.3.14';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.14';
+import { hub } from './hubs.js?v=0.3.15';
+import { t, cocoLabel } from './i18n.js?v=0.3.15';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.15';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -161,6 +161,25 @@ G.forBlock['rm_motor_setup'] = (b) => {
 
 def('rm_motor_run', C.motor, null, [dd('PORT', motorPorts), num('SPEED')], 'stmt');
 G.forBlock['rm_motor_run'] = (b) => `${motor(b.getFieldValue('PORT'))}.run(${times(val(b, 'SPEED', O.MULTIPLICATIVE, '50'), 10)})\n`;
+
+// 모터 두 개를 한 블록으로 (왼쪽·오른쪽 바퀴를 따로 제어할 때)
+def('rm_motor_pair_run', C.motor, null, [dd('P1', motorPorts), num('S1'), dd('P2', motorPorts), num('S2')], 'stmt');
+G.forBlock['rm_motor_pair_run'] = (b) =>
+  `${motor(b.getFieldValue('P1'))}.run(${times(val(b, 'S1', O.MULTIPLICATIVE, '50'), 10)})\n` +
+  `${motor(b.getFieldValue('P2'))}.run(${times(val(b, 'S2', O.MULTIPLICATIVE, '50'), 10)})\n`;
+
+def('rm_motor_pair_setup', C.motor, null,
+  [dd('P1', motorPorts), dd('D1', () => opts('dir', ['COUNTERCLOCKWISE', 'CLOCKWISE'])),
+    dd('P2', motorPorts), dd('D2', () => opts('dir', ['CLOCKWISE', 'COUNTERCLOCKWISE']))], 'stmt');
+G.forBlock['rm_motor_pair_setup'] = (b) => {
+  imp(hub().devices, 'Motor');
+  imp('pybricks.parameters', 'Direction');
+  for (const [pf, df] of [['P1', 'D1'], ['P2', 'D2']]) {
+    const p = b.getFieldValue(pf);
+    setup('motor_' + p, `motor_${p} = Motor(${port(p)}, Direction.${b.getFieldValue(df)})`, true);
+  }
+  return '';
+};
 
 def('rm_motor_power', C.motor, null, [dd('PORT', motorPorts), num('POWER')], 'stmt');
 G.forBlock['rm_motor_power'] = (b) => `${motor(b.getFieldValue('PORT'))}.dc(${val(b, 'POWER', O.NONE, '50')})\n`;

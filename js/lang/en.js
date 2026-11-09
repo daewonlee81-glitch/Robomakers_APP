@@ -660,4 +660,12 @@ export default {
   "pwa.needNet": "An internet connection is needed to download.",
   "pwa.wentOffline": "📴 Internet is off. Coding and the hub connection still work.",
   "pwa.backOnline": "Back online.",
+  "b.rm_motor_pair_run": "run motor %1 at %2 % and motor %3 at %4 % speed",
+  "b.rm_motor_pair_run.tip": "Runs two motors at once. Speed 100% = 1000 degrees per second. Different speeds make the robot turn.",
+  "b.rm_motor_pair_setup": "set motor %1 direction %2 and motor %3 direction %4",
+  "b.rm_motor_pair_setup.tip": "Sets which way both motors turn for a positive speed. The two wheel motors usually need opposite directions so both drive forward.",
+  "ex.speedtest": "Measure: top driving speed · top turn rate",
+  "ex.speedtest.start": "Measuring top speed — make sure there is at least 1 m of free space ahead",
+  "ex.speedtest.v": "Top straight speed: ",
+  "ex.speedtest.w": "Top turn rate: ",
 };

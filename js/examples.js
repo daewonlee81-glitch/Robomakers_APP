@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.14';
+import { t } from './i18n.js?v=0.3.15';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -160,10 +160,9 @@ export const EXAMPLES = {
       const num = (n) => ({ type: 'math_number', fields: { NUM: n } });
       const ar = (op, a, b) => ({ type: 'math_arithmetic', fields: { OP: op }, inputs: { A: V(a), B: V(b) } });
       const line = (w) => B('rm_husky_line', { PORT: P, WHAT: w });
-      const run = (port, val) => B('rm_motor_run', { PORT: port }, { SPEED: V(val) });
+      const run2 = (a, b) => B('rm_motor_pair_run', { P1: L, P2: R }, { S1: V(a), S2: V(b) });
       const top = start([
-        B('rm_motor_setup', { PORT: L, DIR: 'COUNTERCLOCKWISE' }),
-        B('rm_motor_setup', { PORT: R, DIR: 'CLOCKWISE' }),
+        B('rm_motor_pair_setup', { P1: L, D1: 'COUNTERCLOCKWISE', P2: R, D2: 'CLOCKWISE' }),
         set('Target', num(160)), set('Kp', num(0.05)), set('Speed', num(20)),
         {
           type: 'controls_whileUntil', fields: { MODE: 'UNTIL' },
@@ -171,12 +170,11 @@ export const EXAMPLES = {
             BOOL: V({ type: 'logic_compare', fields: { OP: 'GT' }, inputs: { A: V(line('line_end_x')), B: V(num(180)) } }),
             DO: DO([
               ifElse({ type: 'logic_negate', inputs: { BOOL: V(B('rm_husky_detected', { PORT: P }, { ID: N(0) })) } },
-                [run(L, num(10)), run(R, num(-10))],
+                [run2(num(10), num(-10))],
                 [
                   set('Error', ar('MINUS', line('line_start_x'), v('Target'))),
                   set('Correction', ar('MULTIPLY', v('Kp'), v('Error'))),
-                  run(L, ar('ADD', v('Speed'), v('Correction'))),
-                  run(R, ar('MINUS', v('Speed'), v('Correction'))),
+                  run2(ar('ADD', v('Speed'), v('Correction')), ar('MINUS', v('Speed'), v('Correction'))),
                 ]),
               B('rm_wait', {}, { SEC: N(0.01) }),
             ]),
@@ -186,6 +184,45 @@ export const EXAMPLES = {
         B('rm_motor_stop', { PORT: R, MODE: 'brake' }),
       ]);
       return { ...ws(top), variables: ['Target', 'Kp', 'Speed', 'Error', 'Correction'].map((k) => ({ name: k, id: 'v_' + k })) };
+    },
+  },
+  // 주행 최고 속도 재기: 최대로 달리게 한 뒤 (거리 변화 ÷ 시간) 으로 직진 mm/s · 회전 °/s 를 잼
+  speedtest: {
+    title: () => t('ex.speedtest'),
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => {
+      const v = (k) => ({ type: 'variables_get', fields: { VAR: { id: 'v_' + k } } });
+      const set = (k, val) => ({ type: 'variables_set', fields: { VAR: { id: 'v_' + k } }, inputs: { VALUE: V(val) } });
+      const num = (n) => ({ type: 'math_number', fields: { NUM: n } });
+      const ar = (op, a, b) => ({ type: 'math_arithmetic', fields: { OP: op }, inputs: { A: V(a), B: V(b) } });
+      const round = (a) => ({ type: 'math_round', fields: { OP: 'ROUND' }, inputs: { NUM: V(a) } });
+      const dv = (w) => B('rm_drive_value', { WHAT: w });
+      const timer = () => B('rm_timer_value');
+      const say = (label, k, unit) => B('rm_print', {}, { TEXT: V({ type: 'text_join', extraState: { itemCount: 3 },
+        inputs: { ADD0: T(label), ADD1: V(round(v(k))), ADD2: T(unit) } }) });
+      // 속도 = (지금 값 − 시작 값) ÷ (지금 시간 − 시작 시간)   (타이머는 초 단위)
+      const rate = (k, what) => set(k, ar('DIVIDE', ar('MINUS', dv(what), v('Start')), ar('MINUS', timer(), v('T0'))));
+      const measure = (k, speed, turn, what) => [
+        B('rm_drive_reset'),
+        B('rm_drive_drive', {}, { SPEED: N(speed), TURN: N(turn) }),
+        B('rm_wait', {}, { SEC: N(0.8) }), // 최고 속도까지 빨라지는 시간
+        set('Start', dv(what)), set('T0', timer()),
+        B('rm_wait', {}, { SEC: N(1) }),
+        rate(k, what),
+        B('rm_drive_stop'),
+        B('rm_wait', {}, { SEC: N(1) }),
+      ];
+      const list = [
+        B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+        B('rm_print', {}, { TEXT: T(t('ex.speedtest.start')) }),
+        ...measure('MaxSpeed', 2000, 0, 'distance'),
+        ...measure('MaxTurn', 0, 2000, 'angle'),
+        say(t('ex.speedtest.v'), 'MaxSpeed', ' mm/s'),
+        say(t('ex.speedtest.w'), 'MaxTurn', ' deg/s'),
+      ];
+      if (h.display) list.push(B('rm_display_number', {}, { NUM: V(round(v('MaxSpeed'))) }), B('rm_wait', {}, { SEC: N(3) }),
+        B('rm_display_number', {}, { NUM: V(round(v('MaxTurn'))) }), B('rm_wait', {}, { SEC: N(3) }));
+      return { ...ws(start(list)), variables: ['MaxSpeed', 'MaxTurn', 'Start', 'T0'].map((k) => ({ name: k, id: 'v_' + k })) };
     },
   },
   esp32: {

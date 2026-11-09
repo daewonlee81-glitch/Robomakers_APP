@@ -49,7 +49,7 @@
     rm_ai_color_is: 'color', rm_ai_color_value: 'color', rm_ai_lcolor_seen: 'color', rm_ai_lcolor_value: 'color',
   };
   const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc'];
-  const COL = { ai: '#00A88F', esp: '#3D7A3A' };
+  const COL = { ai: '#00A88F', esp: '#3D7A3A', motor: '#0090F5' };
 
   // ───────────── 블록 정의 (에디터와 같은 이름 · 같은 필드) ─────────────
   const lsJson = (k, d) => {
@@ -103,6 +103,12 @@
   def('rm_ai_lcolor_seen', COL.ai, [dd('N', slotOptions)], 'bool');
   def('rm_ai_lcolor_value', COL.ai, [dd('N', slotOptions), dd('WHAT', () => [[t('o.objv.x'), '1'], [t('o.objv.y'), '2'], [t('o.lcolv.size'), '3']])], 'num');
 
+  // 모터 두 개를 한 블록으로
+  const mports = () => (W.hub()?.motorPorts || ['A', 'B']).map((p) => [p, p]);
+  const dirs = (first) => opts('dir', first === 'CLOCKWISE' ? ['CLOCKWISE', 'COUNTERCLOCKWISE'] : ['COUNTERCLOCKWISE', 'CLOCKWISE']);
+  def('rm_motor_pair_run', COL.motor, [dd('P1', mports), num('S1'), dd('P2', mports), num('S2')], 'stmt');
+  def('rm_motor_pair_setup', COL.motor, [dd('P1', mports), dd('D1', () => dirs('COUNTERCLOCKWISE')), dd('P2', mports), dd('D2', () => dirs('CLOCKWISE'))], 'stmt');
+
   def('rm_eio_dout', COL.esp, [dd('PORT', ports), pinIn, dd('ON', () => opts('onoff', ['1', '0']))], 'stmt');
   def('rm_eio_din', COL.esp, [dd('PORT', ports), pinIn, dd('PULL', () => opts('pull', ['2', '3', '1']))], 'bool');
   def('rm_eio_ain', COL.esp, [dd('PORT', ports), pinIn], 'num');
@@ -133,6 +139,15 @@
     };
     const F = PO.FUNCTION_CALL;
     const g = PY.forBlock;
+    // 모터 두 개 블록 → 기존 한 모터 블록의 생성기를 그대로 써서 같은 코드로
+    const asOne = (b, map) => new Proxy(b, { get: (o, k) => (k === 'getFieldValue' ? (n) => o.getFieldValue(map[n] || n)
+      : k === 'getInput' ? (n) => o.getInput(map[n] || n) : k === 'getInputTargetBlock' ? (n) => o.getInputTargetBlock(map[n] || n)
+        : typeof o[k] === 'function' ? o[k].bind(o) : o[k]) });
+    const pairGen = (G, one) => (b) => [1, 2].map((i) => G.forBlock[one](asOne(b, one === 'rm_motor_run'
+      ? { PORT: 'P' + i, SPEED: 'S' + i } : { PORT: 'P' + i, DIR: 'D' + i }), G)).join('');
+    window.__wbPair = pairGen;
+    g.rm_motor_pair_run = pairGen(PY, 'rm_motor_run');
+    g.rm_motor_pair_setup = pairGen(PY, 'rm_motor_setup');
     g.rm_ai_obj_seen = (b) => [`${aicam()}.object_seen(${b.getFieldValue('OBJ')})`, F];
     g.rm_ai_obj_value = (b) => [`${aicam()}.object_value(${b.getFieldValue('OBJ')}, ${b.getFieldValue('WHAT')})`, F];
     g.rm_ai_teach_is = (b) => [`${aicam()}.taught_is(${b.getFieldValue('N')})`, F];
@@ -165,6 +180,13 @@
     const X = 'window.__wbx';
     const F = JO.FUNCTION_CALL;
     const g = JG.forBlock;
+    if (window.__wbPair) {
+      g.rm_motor_pair_run = window.__wbPair(JG, 'rm_motor_run');
+      g.rm_motor_pair_setup = window.__wbPair(JG, 'rm_motor_setup');
+    } else {
+      g.rm_motor_pair_run = (b) => ['1', '2'].map((i) => `await api.wbRun(${JSON.stringify(b.getFieldValue('P' + i))}, ${jv(b, 'S' + i, '50')});\n`).join('');
+      g.rm_motor_pair_setup = (b) => ['1', '2'].map((i) => `await api.wbMotorDir(${JSON.stringify(b.getFieldValue('P' + i))}, ${JSON.stringify(b.getFieldValue('D' + i))});\n`).join('');
+    }
     g.rm_ai_obj_seen = (b) => [`${X}.objSeen(${b.getFieldValue('OBJ')})`, F];
     g.rm_ai_obj_value = (b) => [`${X}.objValue(${b.getFieldValue('OBJ')}, ${b.getFieldValue('WHAT')})`, F];
     g.rm_ai_teach_is = (b) => [`(${X}.get('T', 0, 0) === ${b.getFieldValue('N')})`, JO.EQUALITY];
@@ -197,6 +219,13 @@
     try {
       for (const c of tb.contents || []) {
         const items = c.contents || [];
+        const mr = items.findIndex((x) => x.type === 'rm_motor_run');
+        if (mr >= 0 && !items.some((x) => x.type === 'rm_motor_pair_run')) {
+          const mp = hub?.motorPorts || ['A', 'B'];
+          items.splice(mr + 1, 0, blk('rm_motor_pair_run', { S1: n(50), S2: n(50) }, { P1: mp[0], P2: mp[1] }));
+          const ms = items.findIndex((x) => x.type === 'rm_motor_setup');
+          items.splice(ms + 1, 0, blk('rm_motor_pair_setup', null, { P1: mp[0], P2: mp[1] }));
+        }
         const at = items.findIndex((x) => x.type === 'rm_ai_pose_value');
         if (at >= 0 && !items.some((x) => x.type === 'rm_ai_obj_seen')) {
           items.splice(at + 1, 0,
@@ -227,6 +256,15 @@
   } catch (e) {
     /* 아직 시뮬레이터 작업 공간이 없음 — 처음 열 때 위 훅이 적용됩니다 */
   }
+
+  // ───────────── 모터 최고 속도 (Pybricks 와 같게: 이보다 빨리 돌지 않음) ─────────────
+  //   SPIKE 중형·대형 1000 °/s · SPIKE Essential 소형 620 °/s · EV3 대형 800 °/s (pbio servo_settings.c)
+  const MAX_DPS = { PrimeHub: 1000, EssentialHub: 620, EV3Brick: 800 };
+  window.__wbClamp = (port, dps) => {
+    const v = Number(dps) || 0;
+    const m = MAX_DPS[W.hub()?.cls] || 1000;
+    return Math.max(-m, Math.min(m, v));
+  };
 
   // ───────────── 허브 라이브러리 (에디터와 같은 최신 버전) ─────────────
   if (W.WB_LIB) Object.assign(W.WB_LIB, LIBS);

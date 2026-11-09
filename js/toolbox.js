@@ -1,7 +1,7 @@
 // toolbox.js — 허브에 맞는 블록 꾸러미(툴박스)
-import { HUBS } from './hubs.js?v=0.3.14';
-import { C } from './blocks.js?v=0.3.14';
-import { t } from './i18n.js?v=0.3.14';
+import { HUBS } from './hubs.js?v=0.3.15';
+import { C } from './blocks.js?v=0.3.15';
+import { t } from './i18n.js?v=0.3.15';
 
 const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const txt = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -23,12 +23,14 @@ export function buildToolbox(hubKey) {
   cats.push(cat(t('cat.motor'), C.motor, [
     b('rm_motor_run_for', { SPEED: n(50), AMOUNT: n(1) }, { UNIT: 'rot' }),
     b('rm_motor_run', { SPEED: n(50) }),
+    b('rm_motor_pair_run', { S1: n(50), S2: n(50) }, { P1: h.motorPorts[0], P2: h.motorPorts[1] }),
     b('rm_motor_power', { POWER: n(50) }),
     b('rm_motor_target', { SPEED: n(50), ANGLE: n(0) }),
     b('rm_motor_stop'),
     b('rm_motor_value'),
     b('rm_motor_reset'),
     b('rm_motor_setup'),
+    b('rm_motor_pair_setup', null, { P1: h.motorPorts[0], P2: h.motorPorts[1] }),
   ]));
 
   cats.push(cat(t('cat.drive'), C.drive, [

@@ -661,4 +661,12 @@ export default {
   "pwa.needNet": "下載需要網路連線。",
   "pwa.wentOffline": "📴 網路已中斷。寫程式和主機連線仍可使用。",
   "pwa.backOnline": "已重新連網。",
+  "b.rm_motor_pair_run": "馬達 %1 以 %2 %、馬達 %3 以 %4 % 速度持續轉動",
+  "b.rm_motor_pair_run.tip": "同時轉動兩個馬達。速度 100% = 每秒 1000 度。兩個速度不同時機器人會轉彎。",
+  "b.rm_motor_pair_setup": "設定馬達 %1 方向為 %2、馬達 %3 方向為 %4",
+  "b.rm_motor_pair_setup.tip": "一次設定兩個馬達正速度時的轉動方向。左右輪馬達通常要設成相反方向,才能一起前進。",
+  "ex.speedtest": "測量:最高行駛速度 · 最高轉彎速度",
+  "ex.speedtest.start": "測量最高速度 — 請確認前方至少有 1 公尺空地",
+  "ex.speedtest.v": "直行最高速度: ",
+  "ex.speedtest.w": "轉彎最高速度: ",
 };

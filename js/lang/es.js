@@ -661,4 +661,12 @@ export default {
   "pwa.needNet": "Se necesita conexión a internet para descargar.",
   "pwa.wentOffline": "📴 Sin internet. La programación y la conexión al hub siguen funcionando.",
   "pwa.backOnline": "Conexión a internet recuperada.",
+  "b.rm_motor_pair_run": "girar motor %1 a %2 % y motor %3 a %4 % de velocidad",
+  "b.rm_motor_pair_run.tip": "Gira dos motores a la vez. Velocidad 100 % = 1000 grados por segundo. Con velocidades distintas el robot gira.",
+  "b.rm_motor_pair_setup": "motor %1 sentido %2 y motor %3 sentido %4",
+  "b.rm_motor_pair_setup.tip": "Fija a la vez hacia dónde giran los dos motores con velocidad positiva. Los motores de las ruedas suelen ir en sentidos opuestos para que ambos avancen.",
+  "ex.speedtest": "Medir: velocidad máxima de avance · de giro",
+  "ex.speedtest.start": "Midiendo la velocidad máxima — deja al menos 1 m libre delante",
+  "ex.speedtest.v": "Velocidad máxima recta: ",
+  "ex.speedtest.w": "Velocidad máxima de giro: ",
 };

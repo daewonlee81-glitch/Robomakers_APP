@@ -8,8 +8,8 @@
 //  규칙 점검은 AI 없이도 항상 동작합니다 (떨어진 블록, 기다리기 없는 반복, 포트 겹침 …).
 
 /* global Blockly */
-import { t, getLang } from './i18n.js?v=0.3.14';
-import { expectedPorts } from './statusmon.js?v=0.3.14';
+import { t, getLang } from './i18n.js?v=0.3.15';
+import { expectedPorts } from './statusmon.js?v=0.3.15';
 
 const STORE = 'rm-tutor';
 const CHROME_LANGS = ['en', 'ja', 'es', 'de', 'fr'];
@@ -141,7 +141,7 @@ export function ruleCheck(ws, code, ctx) {
   return out;
 }
 function blocksOnPort(all, port) {
-  return all.filter((b) => ['PORT', 'L', 'R'].some((f) => b.getField(f) && b.getFieldValue(f) === port)).map((b) => b.id);
+  return all.filter((b) => ['PORT', 'L', 'R', 'P1', 'P2'].some((f) => b.getField(f) && b.getFieldValue(f) === port)).map((b) => b.id);
 }
 
 // ───────────── AI 에 줄 글 ─────────────
