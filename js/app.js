@@ -1,20 +1,20 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.11';
-import { generatePython, teachNames } from './blocks.js?v=0.3.11';
-import { buildToolbox } from './toolbox.js?v=0.3.11';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.11';
-import { makeZip } from './zip.js?v=0.3.11';
-import { initHelp } from './help.js?v=0.3.11';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.11';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.11';
-import { WebGamepad } from './gamepad.js?v=0.3.11';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.11';
-import { HuskyMonitor } from './huskymon.js?v=0.3.11';
-import { initLearn } from './learn.js?v=0.3.11';
-import { initAiGuide } from './aiguide.js?v=0.3.11';
-import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.11';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.12';
+import { generatePython, teachNames } from './blocks.js?v=0.3.12';
+import { buildToolbox } from './toolbox.js?v=0.3.12';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.12';
+import { makeZip } from './zip.js?v=0.3.12';
+import { initHelp } from './help.js?v=0.3.12';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.12';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.12';
+import { WebGamepad } from './gamepad.js?v=0.3.12';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.12';
+import { HuskyMonitor } from './huskymon.js?v=0.3.12';
+import { initLearn } from './learn.js?v=0.3.12';
+import { initAiGuide } from './aiguide.js?v=0.3.12';
+import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.12';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -186,7 +186,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.11');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.12');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -281,7 +281,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.11`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.12`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -536,6 +536,24 @@ function showPanels() {
   const m = camModes();
   $('#teachPanel').hidden = !m.includes('teach');
   $('#colorPanel').hidden = !m.includes('color');
+}
+
+// 반쯤 흑백 토글 — 화면 표시만 바뀜 (AI 가 받는 영상은 그대로 컬러). 뼈대·표시가 잘 보임
+const CAM_GRAY_KEY = 'rm-cam-gray';
+function setCamGray(on) {
+  $('#paneCam .cam').classList.toggle('cam-gray', on);
+  $('#btnCamGray').setAttribute('aria-pressed', on ? 'true' : 'false');
+  try {
+    localStorage.setItem(CAM_GRAY_KEY, on ? '1' : '0');
+  } catch (e) {
+    /* 무시 */
+  }
+}
+$('#btnCamGray').addEventListener('click', () => setCamGray(!$('#paneCam .cam').classList.contains('cam-gray')));
+try {
+  setCamGray(localStorage.getItem(CAM_GRAY_KEY) === '1');
+} catch (e) {
+  setCamGray(false);
 }
 
 // 읽은 값 표시

@@ -312,3 +312,10 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .guide .muted { color: var(--ink-2); font-size: 12.5px; }
 .aig-svg { width: 100%; max-width: 420px; display: block; margin: 6px auto; background: #F7F9FC; border-radius: 10px; }
 .aig-svg .lb { font-size: 12px; font-weight: 700; }
+
+/* 반쯤 흑백 토글 (표시만 — 인식에는 영향 없음) */
+.cam video { transition: filter .25s; }
+.cam.cam-gray video { filter: saturate(.3) contrast(1.05); }
+.cam-gray-btn { position: absolute; right: 8px; bottom: 8px; z-index: 3; height: 28px; padding: 0 10px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: rgba(20,30,52,.55); color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; backdrop-filter: blur(2px); }
+.cam-gray-btn:hover { background: rgba(20,30,52,.75); }
+.cam-gray-btn[aria-pressed="true"] { background: #fff; color: var(--ink); border-color: #fff; }
