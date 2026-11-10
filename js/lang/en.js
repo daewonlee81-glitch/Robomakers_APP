@@ -668,4 +668,6 @@ export default {
   "pwa.needNet": "An internet connection is needed to download.",
   "pwa.wentOffline": "📴 Internet is off. Coding and the hub connection still work.",
   "pwa.backOnline": "Back online.",
+  "msg.dlDone": "Download complete!",
+  "msg.dlRun": "The program is now running on the hub.",
 };

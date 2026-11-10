@@ -409,3 +409,15 @@ textarea.code:focus { outline: 2px solid var(--brand); }
   #transportSelect { width: 82px; }
   select.lang { width: 62px; }
 }
+
+/* 실행 중인 블록 밝히기 */
+.rm-run > .blocklyPath { filter: brightness(1.45) drop-shadow(0 0 6px #FFD400) !important; stroke: #FFD400 !important; stroke-width: 3px !important; }
+
+/* 다운로드 완료 알림 */
+.done-pop { position: fixed; inset: 0; z-index: 350; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, .28); }
+.done-pop[hidden] { display: none; }
+.done-card { background: #fff; border-radius: 16px; padding: 22px 28px 18px; min-width: 280px; max-width: min(440px, 90vw); text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); animation: ttIn .15s ease; }
+.done-ico { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.done-card b { display: block; font-size: 18px; }
+.done-card p { margin: 8px 0 14px; color: var(--ink-2); font-size: 14px; line-height: 1.5; white-space: pre-line; }
+.done-card button { height: 36px; min-width: 96px; border-radius: 10px; border: 0; background: var(--brand); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }

@@ -1,9 +1,9 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.16';
-import { t, cocoLabel } from './i18n.js?v=0.3.16';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.16';
+import { hub } from './hubs.js?v=0.3.17';
+import { t, cocoLabel } from './i18n.js?v=0.3.17';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.17';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -558,7 +558,36 @@ G.forBlock['rm_eio_np_fillc'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel
 // ════════════════════════ 코드 생성 ════════════════════════
 
 /** 시작 블록 아래와 함수 정의만 파이썬으로 만듭니다. */
-export function generatePython(workspace) {
+// 실행 중인 블록 표시(trace): 문장 블록마다 _t(번호) 를 앞에 넣고, 허브가 「@BK:번호」 를 보내면 에디터가 그 블록을 밝힘.
+//   빠른 반복에서 블루투스가 넘치지 않게 35 ms 에 한 번만 보내되, 오래 걸리는 블록(기다리기·주행 등)은 항상 보냄.
+const TRACE_SLOW = /^(rm_wait|rm_wait_until|rm_drive_straight|rm_drive_turn|rm_drive_curve|rm_motor_run_for|rm_motor_target|rm_beep|rm_eio_servo|rm_say|rm_sound|rm_display)/;
+const TRACE_DEF = `_tw = StopWatch()
+_tl = -1
+_tt = -100
+def _t(n, f=0):
+    global _tl, _tt
+    if n != _tl:
+        m = _tw.time()
+        if f or m - _tt > 35:
+            _tl = n
+            _tt = m
+            print("@BK:" + str(n))`;
+
+/**
+ * 시작 블록 아래와 함수 정의만 파이썬으로 만듭니다.
+ * opts.trace = true 이면 실행 중인 블록 표시용 코드를 넣고 traceIds(번호 → 블록 id)를 함께 돌려줍니다.
+ */
+export function generatePython(workspace, opts = {}) {
+  const trace = !!opts.trace;
+  const traceIds = [];
+  G.STATEMENT_PREFIX = trace ? '_t(%1)\n' : null;
+  try {
+    return generate_(workspace, trace, traceIds);
+  } finally {
+    G.STATEMENT_PREFIX = null;
+  }
+}
+function generate_(workspace, trace, traceIds) {
   G.init(workspace);
   G.rmImports_ = new Map();
   G.rmPlainImports_ = new Set();
@@ -606,6 +635,20 @@ export function generatePython(workspace) {
   out += t('gen.setup') + '\n' + setupCode + '\n\n';
   if (varInit) out += varInit + '\n\n';
   if (defs.length) out += defs.join('\n\n') + '\n\n';
+  if (trace) {
+    imp('pybricks.tools', 'StopWatch');
+    out = out.replace(/\n\n/, '\nfrom pybricks.tools import StopWatch\n\n');
+    out += TRACE_DEF + '\n\n';
+  }
   out += t('gen.start') + '\n' + (main.trim() ? main : 'pass\n');
-  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart };
+  if (trace) {
+    out = out.replace(/_t\('([^']+)'\)/g, (m, id) => {
+      const b = workspace.getBlockById(id);
+      if (!b) return '_t(0)';
+      let n = traceIds.indexOf(id);
+      if (n < 0) n = traceIds.push(id) - 1;
+      return TRACE_SLOW.test(b.type) ? `_t(${n}, 1)` : `_t(${n})`;
+    });
+  }
+  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart, traceIds };
 }

@@ -669,4 +669,6 @@ export default {
   "pwa.needNet": "ダウンロードにはインターネット接続が必要です。",
   "pwa.wentOffline": "📴 インターネットが切れました。コーディングとハブ接続はそのまま使えます。",
   "pwa.backOnline": "インターネットに再接続しました。",
+  "msg.dlDone": "ダウンロード完了!",
+  "msg.dlRun": "ハブでプログラムを実行します。",
 };

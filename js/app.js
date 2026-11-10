@@ -1,22 +1,22 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.16';
-import { generatePython, teachNames } from './blocks.js?v=0.3.16';
-import { buildToolbox } from './toolbox.js?v=0.3.16';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.16';
-import { makeZip } from './zip.js?v=0.3.16';
-import { initHelp } from './help.js?v=0.3.16';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.16';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.16';
-import { WebGamepad } from './gamepad.js?v=0.3.16';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.16';
-import { HuskyMonitor } from './huskymon.js?v=0.3.16';
-import { initLearn } from './learn.js?v=0.3.16';
-import { initAiGuide } from './aiguide.js?v=0.3.16';
-import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.16';
-import { initTutor } from './tutor.js?v=0.3.16';
-import { initPwa } from './pwa.js?v=0.3.16';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.17';
+import { generatePython, teachNames } from './blocks.js?v=0.3.17';
+import { buildToolbox } from './toolbox.js?v=0.3.17';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.17';
+import { makeZip } from './zip.js?v=0.3.17';
+import { initHelp } from './help.js?v=0.3.17';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.17';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.17';
+import { WebGamepad } from './gamepad.js?v=0.3.17';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.17';
+import { HuskyMonitor } from './huskymon.js?v=0.3.17';
+import { initLearn } from './learn.js?v=0.3.17';
+import { initAiGuide } from './aiguide.js?v=0.3.17';
+import { StatusMonitor, statusProgram } from './statusmon.js?v=0.3.17';
+import { initTutor } from './tutor.js?v=0.3.17';
+import { initPwa } from './pwa.js?v=0.3.17';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -189,7 +189,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.16');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.17');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -290,13 +290,33 @@ function toast(msg, kind = '') {
   toastTimer = setTimeout(() => (t.className = ''), 3500);
 }
 
+/** 화면 가운데 뜨는 완료 알림. ms 뒤에 저절로 닫히고, 확인 단추·바깥 누르기·Esc 로도 닫힘 */
+let popTimer = 0;
+function popup(title, body = '', ms = 6000) {
+  let el = $('#donePopup');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'donePopup';
+    el.className = 'done-pop';
+    el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('button')) el.hidden = true; });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' || e.key === 'Enter') el.hidden = true; });
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<div class="done-card" role="alertdialog"><div class="done-ico">✅</div><b></b><p></p><button type="button" class="primary">OK</button></div>';
+  el.querySelector('b').textContent = title;
+  el.querySelector('p').textContent = body;
+  el.hidden = false;
+  clearTimeout(popTimer);
+  popTimer = setTimeout(() => (el.hidden = true), ms);
+}
+
 // ───────────────────────── 허브 연결 / 실행 ─────────────────────────
 const hubConn = new PybricksHub();
 const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.16`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.17`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -341,12 +361,32 @@ hubConn.addEventListener('disconnect', () => {
 let wasRunning = false;
 hubConn.addEventListener('status', (e) => {
   if (e.detail.running && !wasRunning) { runOut = ''; hinted = false; lastErr = null; }
-  if (!e.detail.running && wasRunning) setTimeout(errorHint, 300);
+  if (!e.detail.running && wasRunning) {
+    setTimeout(errorHint, 300);
+    setTimeout(() => runGlow(null), 600); // 끝나면 강조 끄기
+  }
   wasRunning = e.detail.running;
   setConnUi();
   $('#btnRun').classList.toggle('running', e.detail.running);
 });
 let stdoutLine = '';
+// 실행 중인 블록 밝히기: 허브가 보내는 「@BK:번호」 → 그 블록 강조
+let traceIds = [];
+function traceLine(x) {
+  const m = /^@BK:(\d+)$/.exec(x);
+  if (!m) return false;
+  const id = traceIds[+m[1]];
+  if (id) runGlow(id);
+  return true;
+}
+let runBlock = null;
+function runGlow(id) {
+  const b = id ? workspace.getBlockById(id) : null;
+  if (b === runBlock) return;
+  runBlock?.getSvgRoot()?.classList.remove('rm-run');
+  runBlock = b;
+  b?.getSvgRoot()?.classList.add('rm-run');
+}
 let lastSent = ''; // 마지막으로 허브에 보낸 파이썬 (오류 줄 번호 → 코드 줄)
 let runOut = '';
 let hinted = false;
@@ -362,7 +402,7 @@ hubConn.addEventListener('stdout', (e) => {
     stdoutHold = tail;
     tail = '';
   }
-  let out = lines.filter((l) => { const x = l.replace(/\r$/, ''); return !huskyMon.line(x) && !statusMon.line(x); }).map((l) => l + '\n').join('') + tail;
+  let out = lines.filter((l) => { const x = l.replace(/\r$/, ''); return !traceLine(x) && !huskyMon.line(x) && !statusMon.line(x); }).map((l) => l + '\n').join('') + tail;
   if (!out) return;
   termWrite(out, /Traceback|Error/.test(stdoutLine + out) ? 'err' : '');
   stdoutLine = out.split('\n').pop();
@@ -408,10 +448,18 @@ function errorHint() {
  * @param {boolean} andRun true = 내려받고 실행, false = 허브에 저장만 (허브 버튼으로 실행)
  */
 async function sendToHub(andRun, override) {
-  const src = override || (editToggle.checked ? codeEdit.value : currentCode);
+  let src = override || (editToggle.checked ? codeEdit.value : currentCode);
   if (!override && !editToggle.checked && !generatePython(workspace).hasStart) {
     toast(t('msg.needStart'), 'err');
     return;
+  }
+  // ▶ 실행일 때만 「실행 중인 블록 밝히기」 코드를 넣음 (허브에 저장할 때는 넣지 않음)
+  traceIds = [];
+  runGlow(null);
+  if (andRun && !override && !editToggle.checked) {
+    const g = generatePython(workspace, { trace: true });
+    src = g.code;
+    traceIds = g.traceIds;
   }
   const bar = $('#progress');
   try {
@@ -425,11 +473,12 @@ async function sendToHub(andRun, override) {
     if (andRun) {
       await hubConn.downloadAndRun(prog.data, (p) => (bar.value = p));
       termWrite(t('msg.running') + '\n', 'sys');
+      popup(t('msg.dlDone'), t('msg.dlRun'), 2000);
     } else {
       await hubConn.download(prog.data, (p) => (bar.value = p));
       const slot = hubConn.slotCount > 1 ? ' (' + t('msg.slot', hubConn.selectedSlot + 1) + ')' : '';
       termWrite(t('msg.uploaded', slot) + '\n' + t('msg.uploadedHow.' + getHubKey()) + '\n', 'sys');
-      toast(t('msg.uploaded', slot), 'ok');
+      popup(t('msg.dlDone'), t('msg.uploaded', slot).replace(/^✔\s*/, '') + '\n' + t('msg.uploadedHow.' + getHubKey()).trim());
     }
   } catch (e) {
     if (e instanceof CompileError) {
@@ -769,7 +818,7 @@ renderColors();
 cam.modes = new Set(camModes());
 cam.onUpdate(cam);
 // 문제 확인·시험용 (브라우저 콘솔에서 rmDebug.cam 등)
-window.rmDebug = { cam, hub: hubConn, workspace };
+window.rmDebug = { popup, traceLine, setTrace: (ids) => (traceIds = ids), cam, hub: hubConn, workspace };
 
 // ───────────────────────── 게임패드 ─────────────────────────
 const gpad = new WebGamepad();

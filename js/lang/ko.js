@@ -668,4 +668,6 @@ export default {
   "pwa.needNet": "받으려면 인터넷 연결이 필요합니다.",
   "pwa.wentOffline": "📴 인터넷이 끊겼어요. 코딩과 허브 연결은 계속 됩니다.",
   "pwa.backOnline": "인터넷에 다시 연결되었습니다.",
+  "msg.dlDone": "다운로드 완료!",
+  "msg.dlRun": "허브에서 프로그램을 실행합니다.",
 };

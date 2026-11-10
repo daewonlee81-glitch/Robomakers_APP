@@ -669,4 +669,6 @@ export default {
   "pwa.needNet": "Se necesita conexión a internet para descargar.",
   "pwa.wentOffline": "📴 Sin internet. La programación y la conexión al hub siguen funcionando.",
   "pwa.backOnline": "Conexión a internet recuperada.",
+  "msg.dlDone": "¡Descarga completa!",
+  "msg.dlRun": "El programa se está ejecutando en el hub.",
 };

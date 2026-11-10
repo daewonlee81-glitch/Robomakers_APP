@@ -7,7 +7,7 @@
 //
 // precache.json 은 tools/build_sw.py 가 만듭니다 (tools/set_version.py 가 함께 실행).
 
-const VERSION = '0.3.16'; // tools/build_sw.py 가 바꿉니다 — 이 줄이 바뀌어야 브라우저가 새 버전을 알아챔
+const VERSION = '0.3.17'; // tools/build_sw.py 가 바꿉니다 — 이 줄이 바뀌어야 브라우저가 새 버전을 알아챔
 const APP_CACHE = 'rm-app-';
 const EXT_CACHE = 'rm-ext-v1';
 const WLLM_CACHE = 'rm-webllm-0.2.87';

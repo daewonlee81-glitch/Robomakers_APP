@@ -180,6 +180,28 @@
     const X = 'window.__wbx';
     const F = JO.FUNCTION_CALL;
     const g = JG.forBlock;
+    // 실행 중인 블록 밝히기: 문장 블록마다 __wbTrace(블록 id) 를 앞에 넣음
+    JG.STATEMENT_PREFIX = '__wbTrace(%1);\n';
+    const hs = document.createElement('style');
+    hs.textContent = '.rm-run>.blocklyPath{filter:brightness(1.45) drop-shadow(0 0 6px #FFD400)!important;stroke:#FFD400!important;stroke-width:3px!important}';
+    document.head.appendChild(hs);
+    let runB = null;
+    window.__wbTrace = (id) => {
+      try {
+        const ws = W.ws();
+        const b = id && ws ? ws.getBlockById(id) : null;
+        if (b === runB) return;
+        if (runB && runB.getSvgRoot()) runB.getSvgRoot().classList.remove('rm-run');
+        runB = b;
+        if (b && b.getSvgRoot()) b.getSvgRoot().classList.add('rm-run');
+      } catch (e) { /* 무시 */ }
+    };
+    const stopBtn = document.querySelector('#simStop');
+    if (stopBtn) {
+      new MutationObserver(() => {
+        if (stopBtn.hidden) setTimeout(() => { window.__wbTrace(null); }, 400);
+      }).observe(stopBtn, { attributes: true, attributeFilter: ['hidden'] });
+    }
     if (window.__wbPair) {
       g.rm_motor_pair_run = window.__wbPair(JG, 'rm_motor_run');
       g.rm_motor_pair_setup = window.__wbPair(JG, 'rm_motor_setup');

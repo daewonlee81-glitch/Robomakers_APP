@@ -669,4 +669,6 @@ export default {
   "pwa.needNet": "下载需要网络连接。",
   "pwa.wentOffline": "📴 网络已断开。编程和主机连接仍可使用。",
   "pwa.backOnline": "已重新联网。",
+  "msg.dlDone": "下载完成!",
+  "msg.dlRun": "程序正在主机上运行。",
 };
