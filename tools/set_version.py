@@ -20,7 +20,7 @@ ver = re.search(r"version: '([^']*)'", src).group(1)
 Q = f'?v={ver}'
 
 # 1) JS 모듈의 상대 경로 import:  from './x.js'  /  import('./x.js')  /  import(`./lang/${l}.js`)
-imp = re.compile(r"""((?:from\s+|import\(\s*)(['"`]))(\.{1,2}/[^'"`?]+?\.js)(?:\?v=[^'"`]*)?(\2)""")
+imp = re.compile(r"""((?:from\s+|import\s+|import\(\s*)(['"`]))(\.{1,2}/[^'"`?]+?\.js)(?:\?v=[^'"`]*)?(\2)""")
 n = 0
 for f in sorted((ROOT / 'js').rglob('*.js')):
     s = f.read_text(encoding='utf-8')

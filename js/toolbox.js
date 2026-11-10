@@ -1,7 +1,7 @@
 // toolbox.js — 허브에 맞는 블록 꾸러미(툴박스)
-import { HUBS } from './hubs.js?v=0.3.15';
-import { C } from './blocks.js?v=0.3.15';
-import { t } from './i18n.js?v=0.3.15';
+import { HUBS } from './hubs.js?v=0.3.16';
+import { C } from './blocks.js?v=0.3.16';
+import { t } from './i18n.js?v=0.3.16';
 
 const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const txt = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });

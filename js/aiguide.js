@@ -1,7 +1,7 @@
 // aiguide.js — AI 카메라 탭 안의 「학습 방법 안내」 (사물 학습 · 색 학습)
 // 글은 언어 파일의 aiguide.* (tools/aiguide_text.py).
 
-import { t } from './i18n.js?v=0.3.15';
+import { t } from './i18n.js?v=0.3.16';
 
 // 「가장 비슷한 사진 5장」 그림: 사물 1(파랑)·사물 2(주황) 학습 사진과 새 사진(★)
 function knnSvg() {

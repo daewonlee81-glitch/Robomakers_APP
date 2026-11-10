@@ -4,20 +4,20 @@
 //
 //  엔진 (한 번 설치하면 인터넷 없이):
 //    · Chrome 내장 AI (Prompt API · Gemini Nano) — Chrome 이 모델 관리. 지원 언어 en·ja·es·de·fr
-//    · 오픈 모델 (WebLLM + Qwen2.5 Coder) — vendor/web-llm, 모델은 처음 한 번 huggingface 에서 받아 브라우저에 저장
+//    · 오픈 모델 (WebLLM) — 가벼움 Qwen2.5-Coder 1.5B · 추천 Qwen3.5 2B · 고성능 Qwen3.5 4B (tutor-bench.js)
+//      vendor/web-llm, 모델은 처음 한 번 huggingface 에서 받아 브라우저에 저장
 //  규칙 점검은 AI 없이도 항상 동작합니다 (떨어진 블록, 기다리기 없는 반복, 포트 겹침 …).
 
 /* global Blockly */
-import { t, getLang } from './i18n.js?v=0.3.15';
-import { expectedPorts } from './statusmon.js?v=0.3.15';
+import { t, getLang } from './i18n.js?v=0.3.16';
+import { expectedPorts } from './statusmon.js?v=0.3.16';
+import './tutor-bench.js?v=0.3.16'; // window.RMTutorBench — 모델 목록 · 비교 시험 (다른 앱과 공용)
+
+const B = window.RMTutorBench;
 
 const STORE = 'rm-tutor';
 const CHROME_LANGS = ['en', 'ja', 'es', 'de', 'fr'];
 const LANG_NAME = { ko: 'Korean', en: 'English', ja: 'Japanese', 'zh-CN': 'Simplified Chinese', 'zh-TW': 'Traditional Chinese', es: 'Spanish', th: 'Thai' };
-const MODELS = {
-  small: { f16: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC', f32: 'Qwen2.5-Coder-1.5B-Instruct-q4f32_1-MLC' },
-  large: { f16: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC', f32: 'Qwen2.5-Coder-3B-Instruct-q4f32_1-MLC' },
-};
 const WEBLLM = '../vendor/web-llm/index.js'; // 버전 고정 (따로 캐시)
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -234,7 +234,7 @@ const Open = {
   },
   async modelId(size) {
     const g = await this.gpu();
-    return g ? MODELS[size][g.f16 ? 'f16' : 'f32'] : null;
+    return g ? B.modelId(size, g.f16) : null;
   },
   async installed(size) {
     const id = await this.modelId(size);
@@ -254,7 +254,13 @@ const Open = {
       initProgressCallback: (r) => progress(Math.round((r.progress || 0) * 100), r.text),
     });
     this.id = id;
+    this.size = size;
     this.lang = lang;
+  },
+  unload() {
+    this.engine?.unload?.();
+    this.engine = null;
+    this.id = null;
   },
   async remove(size) {
     const id = await this.modelId(size);
@@ -268,23 +274,101 @@ const Open = {
   async *ask(user, lang) {
     const stream = await this.engine.chat.completions.create({
       messages: [{ role: 'system', content: systemPrompt(lang) }, { role: 'user', content: user }],
-      stream: true, temperature: 0.3, max_tokens: 450,
+      stream: true, temperature: 0.3, max_tokens: 450, ...B.genOpts(this.size),
     });
     for await (const c of stream) yield c.choices?.[0]?.delta?.content || '';
   },
 };
+
+
+// ───────────── 모델 비교 시험 예제 (일부러 틀린 곳 하나씩 · expect = 짚어야 할 줄) ─────────────
+const BENCH_CASES = [
+  {
+    title: '벽 앞에서 멈추기 — 비교 방향이 반대',
+    question: 'My robot should drive until it is 10 cm from the wall, but it stops immediately. Check my block program.',
+    expect: [3],
+    listing: `Hub: SPIKE Prime
+
+Block program:
+[L1] ▶ 프로그램 시작할 때
+[L2] 주행 설정 왼쪽 A 오른쪽 E 바퀴 56 mm 간격 112 mm 자이로 거짓
+[L3] (거리 센서 D 거리(mm) > 100) 다음까지 반복
+[L4]   속도 200 mm/초, 회전 0 도/초로 계속 주행
+[L5]   0.01 초 기다리기
+[L6] 주행 멈추기`,
+  },
+  {
+    title: '포트 오류 ENODEV — 모터가 다른 포트에',
+    question: 'My program stopped with the error shown below. Explain in simple words what it means and how to fix it.',
+    expect: [2],
+    listing: `Hub: SPIKE Prime
+
+Block program:
+[L1] ▶ 프로그램 시작할 때
+[L2] 모터 B 방향을 시계 방향 로 설정
+[L3] 모터 B 을 50 % 속도로 2 초 돌리기 (끝날 때까지 기다림)
+
+Status tab (what is plugged in): A = motor, B = empty, C = color sensor
+Last error from the hub: OSError: [Errno 19] ENODEV — at Python line 6: motor_B = Motor(Port.B, Direction.CLOCKWISE)`,
+  },
+  {
+    title: '라인 트레이싱 P 제어 — Kp 를 정하지 않음',
+    question: 'My line follower does not work and I do not know why. Check my block program.',
+    expect: [6, 3],
+    listing: `Hub: SPIKE Prime
+
+Block program:
+[L1] ▶ 프로그램 시작할 때
+[L2] 주행 설정 왼쪽 A 오른쪽 E 바퀴 56 mm 간격 112 mm 자이로 거짓
+[L3] 목표값 를 50 로 설정
+[L4] 무한 반복
+[L5]   오차 를 ((컬러 센서 C 반사광(%)) - (목표값)) 로 설정
+[L6]   보정 을 ((오차) × (Kp)) 로 설정
+[L7]   속도 120 mm/초, 회전 (보정) 도/초로 계속 주행`,
+  },
+  {
+    title: '왼쪽으로 돌기 — 회전 부호',
+    question: 'My robot should turn LEFT at the corner, but it turns right. Which block is wrong?',
+    expect: [4],
+    listing: `Hub: SPIKE Essential
+
+Block program:
+[L1] ▶ 프로그램 시작할 때
+[L2] 주행 설정 왼쪽 A 오른쪽 B 바퀴 56 mm 간격 112 mm 자이로 참
+[L3] 300 mm 직진하기
+[L4] 90 도 회전하기 (오른쪽 +, 왼쪽 -)
+[L5] 300 mm 직진하기`,
+  },
+  {
+    title: '두 모터 방향 — 제자리에서 빙글빙글',
+    question: 'Both motors run at 50 % but my robot spins in place instead of going straight. Why?',
+    expect: [2],
+    listing: `Hub: SPIKE Prime
+
+Block program:
+[L1] ▶ 프로그램 시작할 때
+[L2] 모터 A 방향 시계 방향, 모터 E 방향 시계 방향 로 설정
+[L3] 모터 A 을 50 %, 모터 E 을 50 % 속도로 계속 돌리기
+[L4] 2 초 기다리기
+[L5] 모터 A 멈추기 (천천히)
+[L6] 모터 E 멈추기 (천천히)
+
+Note: the motors are mounted on the left and right side of the robot, facing opposite ways.`,
+  },
+];
 
 // ───────────── 화면 ─────────────
 export function initTutor(ctx) {
   const { workspace } = ctx;
   const drawer = document.getElementById('tutorDrawer');
   const btn = document.getElementById('btnTutor');
-  let st = { open: false, engine: '', size: 'small' };
+  let st = { open: false, engine: '', size: 'rec' };
   try {
     st = { ...st, ...JSON.parse(localStorage.getItem(STORE) || '{}') };
   } catch (e) {
     /* 기본값 */
   }
+  st.size = B.key(st.size); // 예전 이름 small/large → light/old
   const keep = () => {
     try {
       localStorage.setItem(STORE, JSON.stringify(st));
@@ -357,8 +441,11 @@ export function initTutor(ctx) {
     const lang = getLang();
     const chrome = await Chrome.state(lang);
     const gpu = await Open.gpu();
-    const sizes = gpu ? await Promise.all(['small', 'large'].map(async (k) => [k, await Open.installed(k)])) : [];
-    const name = active ? (active === Chrome ? t('tutor.engine.chrome') : t('tutor.model.' + st.size)) : '';
+    const inst = {};
+    if (gpu) for (const k of ['light', 'rec', 'pro', 'old']) inst[k] = await Open.installed(k);
+    const sizes = gpu ? B.rows(inst).map((k) => [k, inst[k]]) : [];
+    const name = active ? (active === Chrome ? t('tutor.engine.chrome') : B.label(st.size, getLang())) : '';
+    lastInst = inst;
     $('.tt-status').textContent = active ? t('tutor.ready', name) : '';
     box.innerHTML = `
       ${active ? '' : `<p class="tt-none">${t('tutor.engine.none')}</p>`}
@@ -366,7 +453,7 @@ export function initTutor(ctx) {
         <summary>${t('tutor.setup')}</summary>
         <div class="tt-opt">
           <b>${t('tutor.engine.webllm')}</b><small>${t('tutor.engine.webllmDesc')}</small>
-          ${gpu ? sizes.map(([k, ok]) => `<div class="tt-row"><span>${t('tutor.model.' + k)}</span>
+          ${gpu ? sizes.map(([k, ok]) => `<div class="tt-row"><span>${esc(B.label(k, getLang()))}${B.desc(k, getLang()) ? `<small>${esc(B.desc(k, getLang()))}</small>` : ''}</span>
             ${ok ? `<em>${t('tutor.installed')}</em><button type="button" data-use="webllm:${k}">${t('tutor.use')}</button><button type="button" data-rm="${k}" title="${t('tutor.remove')}">🗑</button>`
               : `<button type="button" class="primary" data-use="webllm:${k}">${t('tutor.install')}</button>`}</div>`).join('')
             : `<small class="tt-bad">${t('tutor.noGpu')}</small>`}
@@ -379,9 +466,52 @@ export function initTutor(ctx) {
         </div>
         <div class="tt-prog" hidden><i></i><span></span></div>
         <small>${t('tutor.needNet')}</small>
+        ${gpu || chrome.ok ? `<button type="button" class="tt-bench" data-bench="1">${esc(B.text('bench', getLang()))}</button>` : ''}
       </details>`;
   }
+  let lastInst = {};
+  async function openBench() {
+    const lang = getLang();
+    const g = await Open.gpu();
+    const chrome = await Chrome.state(lang);
+    B.open({
+      lang,
+      cases: BENCH_CASES,
+      systemPrompt,
+      lib: () => Open.lib(),
+      f16: !!g?.f16,
+      installed: lastInst,
+      chrome: chrome.ok && chrome.installed ? {
+        ok: true,
+        label: t('tutor.engine.chrome'),
+        async *ask(system, user) {
+          const s = await LanguageModel.create({ ...Chrome.opts(lang), initialPrompts: [{ role: 'system', content: system }] });
+          let prev = '';
+          for await (const chunk of s.promptStreaming(user)) {
+            const piece = chunk.startsWith(prev) && prev ? chunk.slice(prev.length) : chunk;
+            prev = chunk.startsWith(prev) ? chunk : prev + chunk;
+            yield piece;
+          }
+          s.destroy?.();
+        },
+      } : null,
+      // 시험하는 동안 튜터가 쓰던 모델은 내려놓고(그래픽 메모리), 끝나면 다시
+      before: () => {
+        if (active === Open) active = null;
+        Open.unload();
+      },
+      after: () => restore(),
+      onUse: (k) => {
+        st.size = k;
+        st.engine = 'webllm';
+        keep();
+        restore();
+      },
+      toast: (m) => ctx.toast(m, 'ok'),
+    });
+  }
   $('.tt-setup').addEventListener('click', async (e) => {
+    if (e.target.closest('[data-bench]')) return openBench();
     const use = e.target.closest('[data-use]')?.dataset.use;
     const rm = e.target.closest('[data-rm]')?.dataset.rm;
     if (rm) {
@@ -411,7 +541,7 @@ export function initTutor(ctx) {
         st.engine = 'webllm';
       }
       keep();
-      ctx.toast(t('tutor.ready', use === 'chrome' ? t('tutor.engine.chrome') : t('tutor.model.' + st.size)), 'ok');
+      ctx.toast(t('tutor.ready', use === 'chrome' ? t('tutor.engine.chrome') : B.label(st.size, getLang())), 'ok');
     } catch (err) {
       addMsg('err', esc(t('tutor.failed', err.message || err)));
     } finally {
