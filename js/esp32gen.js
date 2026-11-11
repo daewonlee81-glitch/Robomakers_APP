@@ -1,7 +1,7 @@
 // esp32gen.js — 허브 프로그램의 「ESP32 채널/명령 등록」 블록에 맞는 LMS-ESP32 쪽 main.py 를 만듭니다.
 // 허브 쪽 PUPRemoteHub 는 모드 순서·이름·크기를 ESP32 쪽과 비교하므로, 같은 순서로 등록해 주는 것이 중요합니다.
-import { t } from './i18n.js?v=0.3.17';
-import { APP } from './config.js?v=0.3.17';
+import { t } from './i18n.js?v=0.3.18';
+import { APP } from './config.js?v=0.3.18';
 
 const RE = /\besp32_([A-F])\.add_(channel|command)\('((?:[^'\\]|\\.)*)', '((?:[^'\\]|\\.)*)'(?:, '((?:[^'\\]|\\.)*)')?\)/g;
 
@@ -34,7 +34,9 @@ export function esp32IoPorts(code) {
 }
 
 // 허브 rm_esp32.IO_CMDS 와 같은 순서·형식
-const IO_CMDS = [['pmode', '', 'BB'], ['inp', '8H', ''], ['dout', '', 'BB'], ['pwm', '', 'BB'], ['servo', '', 'BB'], ['npx', '', '6B']];
+const IO_CMDS = [['pmode', '', 'BB'], ['inp', '8H', ''], ['dout', '', 'BB'], ['pwm', '', 'BB'], ['servo', '', 'BB'], ['npx', '', '6B'],
+  // I2C 센서·화면 (OLED · 음성 인식 · 컬러 · 레이저 거리) — 허브는 이 명령이 있을 때만 씀
+  ['sinit', '', 'BBB'], ['sget', '7H', ''], ['sset', '', 'BBB'], ['otxt', '', 'BB14s']];
 
 /** 파이썬 코드에서 포트별 등록 목록을 뽑습니다. → { A: [{kind, name, a, b}], ... } */
 export function esp32Modes(code) {
@@ -102,6 +104,7 @@ export function esp32Main(port, modes, io = false, ioSrc = '') {
   }
   L.push('');
   L.push('while True:');
+  if (io) L.push(`    rm_tick()  # ${t('esp.gen.tick')}`);
   const ch = modes.filter((x) => x.kind === 'channel');
   if (ch.length) {
     L.push(`    # ${t('esp.gen.todo')}`);
@@ -114,24 +117,26 @@ export function esp32Main(port, modes, io = false, ioSrc = '') {
 /** zip 에 넣을 파일 목록. 등록 블록이 없으면 기본 예제(esp32/main.py) 를 넣습니다. */
 export async function esp32Files(code, folder) {
   const get = async (n) => (await fetch(new URL(`../esp32/${n}?v=${APP.version}`, import.meta.url))).text();
-  const [lpf2, pupremote, license, rmio] = await Promise.all([get('lpf2.py'), get('pupremote.py'), get('LICENSE-PUPRemote.txt'), get('rm_io.py')]);
+  const [lpf2, pupremote, license, rmio, i2cdev, vl53] = await Promise.all([get('lpf2.py'), get('pupremote.py'), get('LICENSE-PUPRemote.txt'), get('rm_io.py'), get('rm_i2cdev.py'), get('rm_vl53.py')]);
   const ports = esp32Modes(code);
   const io = esp32IoPorts(code);
   const keys = Object.keys(ports).sort();
   const files = [];
-  const libs = (dir) => {
+  const libs = (dir, withIo) => {
     files.push({ name: `${dir}/lpf2.py`, data: lpf2 }, { name: `${dir}/pupremote.py`, data: pupremote }, { name: `${dir}/LICENSE-PUPRemote.txt`, data: license });
+    // I2C 센서·화면 드라이버 (처음 쓸 때만 import 되므로 늘 같이 넣어도 메모리를 쓰지 않음)
+    if (withIo) files.push({ name: `${dir}/rm_i2cdev.py`, data: i2cdev }, { name: `${dir}/rm_vl53.py`, data: vl53 });
   };
   if (!keys.length) {
     files.push({ name: `${folder}/main.py`, data: await get('main.py') });
     libs(folder);
   } else if (keys.length === 1) {
     files.push({ name: `${folder}/main.py`, data: esp32Main(keys[0], ports[keys[0]], io.has(keys[0]), rmio) });
-    libs(folder);
+    libs(folder, io.has(keys[0]));
   } else {
     for (const k of keys) {
       files.push({ name: `${folder}/port_${k}/main.py`, data: esp32Main(k, ports[k], io.has(k), rmio) });
-      libs(`${folder}/port_${k}`);
+      libs(`${folder}/port_${k}`, io.has(k));
     }
   }
   files.push({ name: `${folder}/README.txt`, data: t('dl.esp32Readme') + '\n' });

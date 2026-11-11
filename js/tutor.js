@@ -9,9 +9,9 @@
 //  규칙 점검은 AI 없이도 항상 동작합니다 (떨어진 블록, 기다리기 없는 반복, 포트 겹침 …).
 
 /* global Blockly */
-import { t, getLang } from './i18n.js?v=0.3.17';
-import { expectedPorts } from './statusmon.js?v=0.3.17';
-import './tutor-bench.js?v=0.3.17'; // window.RMTutorBench — 모델 목록 · 비교 시험 (다른 앱과 공용)
+import { t, getLang } from './i18n.js?v=0.3.18';
+import { expectedPorts } from './statusmon.js?v=0.3.18';
+import './tutor-bench.js?v=0.3.18'; // window.RMTutorBench — 모델 목록 · 비교 시험 (다른 앱과 공용)
 
 const B = window.RMTutorBench;
 
@@ -109,6 +109,23 @@ export function ruleCheck(ws, code, ctx) {
   }
   for (const [p, v] of Object.entries(husky)) {
     if (v.line && v.block) out.push({ level: 'warn', msg: t('rule.huskyMix', p), ids: [...v.line, ...v.block] });
+  }
+
+  // ESP32 I2C: 컬러 센서와 레이저 거리 센서는 주소가 같음(0x29) — 같은 핀에서 함께 쓰면 안 됨
+  const esUse = {};
+  for (const b of all) {
+    if (!b.isEnabled() || !b.type.startsWith('rm_es_')) continue;
+    const p = b.getFieldValue('PORT');
+    const u = (esUse[p] = esUse[p] || { color: [], tof: [], pins: {} });
+    if (b.type.startsWith('rm_es_color')) u.color.push(b.id);
+    if (b.type === 'rm_es_tof') u.tof.push(b.id);
+    if (b.type === 'rm_es_setup') u.pins[b.getFieldValue('KIND')] = (b.getInputTargetBlock('SDA')?.getFieldValue('NUM') ?? '') + '/' + (b.getInputTargetBlock('SCL')?.getFieldValue('NUM') ?? '');
+  }
+  for (const [p, u] of Object.entries(esUse)) {
+    const grove = '5/4';
+    if (u.color.length && u.tof.length && (u.pins['3'] || grove) === (u.pins['4'] || grove)) {
+      out.push({ level: 'warn', msg: t('rule.esclash', p), ids: [...u.color, ...u.tof] });
+    }
   }
 
   // 정하지 않은 변수

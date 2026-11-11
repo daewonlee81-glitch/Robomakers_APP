@@ -5,6 +5,7 @@
 #
 #   @ST:<전압 mV>,<전류 mA>,<방향>,<앞뒤 기울기>,<좌우 기울기>|A=<종류>:<값1>:<값2>|B=...
 #   종류: m 모터(각도, 속도) · c 색 센서(반사값) · u 거리 센서(mm) · f 힘 센서(힘 0.1N, 눌림)
+#         e LMS-ESP32(워드블럭 ESP32 파일 · 센서 상태 비트) — 이때는 "@ES:..." 줄로 I2C 센서 값도 보냄
 #         g 자이로(EV3, 각도) · t 터치(EV3, 눌림) · i 적외선(EV3, 거리 %) · d 그 밖의 장치(장치 번호) · - 없음
 #
 # 빈 포트는 2초마다 하나씩 다시 살펴서, 실행 중에 꽂은 장치도 나타납니다.
@@ -25,6 +26,18 @@ def _pup_probe(port):
         i = d.info()["id"]
     except Exception:
         return ["-", None]
+    if i == 62:
+        # LMS-ESP32 (PUPRemote) 도 거리 센서 번호로 보입니다. 워드블럭 ESP32 파일이면 I2C 센서까지 켭니다.
+        try:
+            m = d.info()["modes"]
+            if len(m) > 6 and m[0][0].rstrip() == "pmode" and m[6][0].rstrip() == "sinit":
+                from rm_esp32 import ESP32, S_OLED, S_VOICE, S_COLOR, S_TOF
+                e = ESP32(port, io=True)
+                for k in (S_TOF, S_COLOR, S_VOICE, S_OLED):
+                    e.sensor_setup(k, wait_ready=False)
+                return ["e", e]
+        except Exception as ex:
+            print("ESP32?", ex)
     try:
         if i == 62:
             return ["u", UltrasonicSensor(port)]
@@ -74,6 +87,10 @@ def _read(kind, dev):
         return dev.distance(), 0
     if kind == "d":
         return dev, 0
+    if kind == "e":
+        v = dev._sget(True)
+        dev.monitor(True)
+        return v[4], v[6]
     return 0, 0
 
 

@@ -3,9 +3,9 @@
 // 허브에서 rm_status.run() 이 0.25초마다 보내는 「@ST:...」 줄을 읽어 표로 보여 줍니다.
 // 지금 프로그램(파이썬 코드)이 포트마다 무엇을 쓰는지도 읽어서, 실제 연결과 다르면 ⚠ 로 알려 줍니다.
 
-import { t } from './i18n.js?v=0.3.17';
+import { t } from './i18n.js?v=0.3.18';
 
-const ICON = { m: '⚙️', c: '🎨', u: '📏', f: '✋', g: '🧭', t: '👆', i: '📡', d: '❔', '-': '⬜' };
+const ICON = { m: '⚙️', c: '🎨', u: '📏', f: '✋', g: '🧭', t: '👆', i: '📡', d: '❔', e: '📡', '-': '⬜' };
 
 /** 코드에서 포트마다 기대하는 장치 종류 (m · c · u · f · g · t · i · bridge) */
 export function expectedPorts(code) {
@@ -78,6 +78,7 @@ export class StatusMonitor {
       case 't': return p.b || p.a ? t('st.v.pressed') : t('st.v.released');
       case 'i': return t('st.v.ir', p.a);
       case 'd': return t('st.v.devid', p.a);
+      case 'e': return t('st.v.esp', [1, 2, 3, 4].filter((k) => p.b & (1 << k)).length);
       default: return '';
     }
   }
@@ -114,7 +115,7 @@ export class StatusMonitor {
       const w = want[n];
       let warn = '';
       if (L && w) {
-        const ok = w.k === 'bridge' ? p.k === 'c' || p.k === 'd' : p.k === w.k;
+        const ok = w.k === 'bridge' ? p.k === 'c' || p.k === 'd' || p.k === 'e' || (w.cls === 'ESP32' && p.k === 'u') : p.k === w.k;
         if (!ok) warn = t('st.mismatch', t('st.k.' + w.k), p.k === '-' ? t('st.k.-') : t('st.k.' + p.k));
       }
       html += `<div class="st-port ${p.k === '-' ? 'empty' : ''} ${warn ? 'bad' : ''}">
@@ -143,9 +144,100 @@ export function statusProgram(h) {
   return [
     '# Robot status (RoboMakers WordBlock)',
     `from pybricks.hubs import ${h.cls}`,
+    ...(h.lpf2 ? ['import rm_esp32  # LMS-ESP32 가 꽂혀 있으면 I2C 센서 값도 보기'] : []),
     'import rm_status',
     '',
     `rm_status.run(${h.cls}()${ev3 ? ', ev3=True' : ''})`,
     '',
   ].join('\n');
+}
+
+// ───────────────────────── ESP32 I2C 센서 모니터 ─────────────────────────
+// 허브 rm_esp32 가 보내는 "@ES:포트,빨강,초록,파랑,밝기,거리,음성(순번<<8|번호),상태" 줄
+//   상태 = 준비된 장치 비트(1<<종류: 1 OLED · 2 음성 · 3 컬러 · 4 레이저) | 레이저 칩<<8 | 오류 비트(1<<(종류+11))
+const TOF_CHIP = ['', 'VL6180X (TOF050C)', 'VL53L0X (TOF200C)', 'VL53L1X (TOF400C)'];
+const TOF_MAX = [0, 255, 2000, 4000];
+
+/** 허브 rm_esp32.color_name() 과 같은 판별 */
+export function esColorName(r, g, b, c) {
+  if (c < 40) return 'NONE';
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const bright = Math.floor((c * 100) / 21504);
+  const sat = Math.floor(((mx - mn) * 100) / Math.max(mx, 1));
+  if (sat < 18) return bright > 25 ? 'WHITE' : 'BLACK';
+  if (bright < 4) return 'BLACK';
+  const d = mx - mn;
+  let h;
+  if (mx === r) h = ((Math.floor((60 * (g - b)) / d) % 360) + 360) % 360;
+  else if (mx === g) h = Math.floor((60 * (b - r)) / d) + 120;
+  else h = Math.floor((60 * (r - g)) / d) + 240;
+  if (h < 25 || h >= 320) return 'RED';
+  if (h < 75) return 'YELLOW';
+  if (h < 170) return 'GREEN';
+  return 'BLUE';
+}
+
+export class EspMonitor {
+  constructor(root) {
+    this.root = root;
+    this.ports = {}; // 포트 → { v:[...7], t, voice:{ id, t } }
+    this.dirty = false;
+  }
+
+  line(s) {
+    const m = /^@ES:([A-F]),([-\d,]+)\s*$/.exec(s);
+    if (!m) return false;
+    const v = m[2].split(',').map(Number);
+    if (v.length < 7) return true;
+    const p = (this.ports[m[1]] ||= { voice: null, seq: null });
+    const seq = v[5] >> 8;
+    if (p.seq !== null && seq !== p.seq && (v[5] & 255)) p.voice = { id: v[5] & 255, t: performance.now() };
+    p.seq = seq;
+    p.v = v;
+    p.t = performance.now();
+    this.dirty = true;
+    return true;
+  }
+
+  render(force = false) {
+    if (!this.root || (!this.dirty && !force)) return;
+    this.dirty = false;
+    const keys = Object.keys(this.ports).sort();
+    if (!keys.length) {
+      this.root.innerHTML = '';
+      return;
+    }
+    const now = performance.now();
+    this.root.innerHTML = keys.map((k) => {
+      const { v, t: at, voice } = this.ports[k];
+      const [r, g, b, c, mm, , st] = v;
+      const on = (n) => st & (1 << n);
+      const err = (n) => st & (1 << (n + 11));
+      const stale = now - at > 1500;
+      const chip = (st >> 8) & 3;
+      const rows = [];
+      if (on(4)) {
+        const far = mm >= TOF_MAX[chip];
+        const pct = Math.min(100, (mm / (TOF_MAX[chip] || 2000)) * 100);
+        rows.push(`<div class="es-row"><b>📏 ${t('es.dist')}</b><span class="es-big">${far ? t('st.v.far') : mm + ' mm'}</span>
+          <div class="es-bar"><i style="width:${pct}%"></i></div><small>${TOF_CHIP[chip]}</small></div>`);
+      } else if (err(4)) rows.push(`<div class="es-row es-no">📏 ${t('es.missing', t('es.dist'))}</div>`);
+      if (on(3)) {
+        const m = Math.max(r, g, b, 1);
+        const rgb = c > 40 ? [r, g, b].map((x) => Math.round((x * 255) / m)) : [0, 0, 0];
+        const name = esColorName(r, g, b, c);
+        rows.push(`<div class="es-row"><b>🎨 ${t('es.color')}</b><span class="es-sw" style="background:rgb(${rgb.join(',')})"></span>
+          <span class="es-big">${t('o.color.' + name)}</span><small>R ${rgb[0]} · G ${rgb[1]} · B ${rgb[2]} · ${t('o.escolor.3')} ${Math.min(100, Math.floor((c * 100) / 21504))}</small></div>`);
+      } else if (err(3)) rows.push(`<div class="es-row es-no">🎨 ${t('es.missing', t('es.color'))}</div>`);
+      if (on(2)) {
+        const recent = voice && now - voice.t < 3000;
+        rows.push(`<div class="es-row ${recent ? 'es-hit' : ''}"><b>🎙 ${t('es.voice')}</b>
+          <span class="es-big">${voice ? t('es.heard', voice.id) : t('es.notyet')}</span></div>`);
+      } else if (err(2)) rows.push(`<div class="es-row es-no">🎙 ${t('es.missing', t('es.voice'))}</div>`);
+      if (on(1)) rows.push(`<div class="es-row"><b>🖥 OLED</b><span>${t('es.oledOk')}</span></div>`);
+      else if (err(1)) rows.push(`<div class="es-row es-no">🖥 ${t('es.missing', 'OLED')}</div>`);
+      return `<div class="st-card es-card ${stale ? 'es-stale' : ''}"><div class="st-h">📡 ${t('es.title', k)}</div>
+        ${rows.join('') || `<div class="es-row es-no">${t('es.empty')}</div>`}</div>`;
+    }).join('') + `<div class="note">${t('es.help')}</div>`;
+  }
 }

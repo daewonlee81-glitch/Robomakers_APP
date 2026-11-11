@@ -10,6 +10,7 @@
 from pybricks.iodevices import PUPDevice
 from pybricks.tools import wait, StopWatch
 from pupremote_hub import PUPRemoteHub
+import rm_link
 
 _boards = {}
 
@@ -39,6 +40,17 @@ IO_CMDS = (
 )
 OUT, IN, IN_UP, IN_DOWN, ANALOG, PWM, SERVO = range(7)
 
+# I2C 센서·화면 명령 (ESP32 쪽이 이 명령을 알 때만 등록 — 옛 ESP32 main.py 와도 핀 블록은 그대로 동작)
+SENS_CMDS = (
+    ("sinit", "", "BBB"),   # 장치 켜기 (종류, SDA, SCL · 255 = 보드 Grove 단자)
+    ("sget", "7H", ""),     # 값 (빨강, 초록, 파랑, 밝기, 거리mm, 음성 순번<<8|번호, 상태)
+    ("sset", "", "BBB"),    # 설정 (종류, 항목, 값)
+    ("otxt", "", "BB14s"),  # OLED 글자 (줄|크기-1<<4, 칸, 글자)
+)
+S_OLED, S_VOICE, S_COLOR, S_TOF, S_OLED32 = 1, 2, 3, 4, 5
+_TOF_CHIP = ("?", "VL6180X", "VL53L0X", "VL53L1X")
+_S_NAME = ("", "OLED", "voice sensor", "color sensor", "laser distance sensor", "OLED")
+
 
 class ESP32:
     def __init__(self, port, io=False):
@@ -46,6 +58,16 @@ class ESP32:
         self.pr = PUPRemoteHub(port)
         self._last = {}
         self._io = io
+        self._sens = False
+        self._son = {}
+        self._sv = (0,) * 7
+        self._st = -1000
+        self._vseq = None
+        self._vev = 0
+        self._vev_t = 0
+        self._sw = StopWatch()
+        self._pn = str(port)[-1]
+        self._mon = -1000
         if io:
             for name, to_hub, from_hub in IO_CMDS:
                 self.pr.add_command(name, to_hub_fmt=to_hub, from_hub_fmt=from_hub)
@@ -53,6 +75,12 @@ class ESP32:
             self._slot = {}
             self._servo_at = {}
             self.pr.call("pmode", 255, 255)  # ESP32 쪽 핀·네오픽셀 초기화
+            modes = self.pr.pup_device.info()["modes"]
+            n = len(IO_CMDS)
+            self._sens = len(modes) > n and modes[n][0].rstrip() == "sinit"
+            if self._sens:
+                for name, to_hub, from_hub in SENS_CMDS:
+                    self.pr.add_command(name, to_hub_fmt=to_hub, from_hub_fmt=from_hub)
 
     # ---------- I/O 핀 ----------
     def _set_mode(self, pin, mode):
@@ -116,6 +144,154 @@ class ESP32:
 
     def neopixel_show(self):
         self.pr.call("npx", 3, 0, 0, 0, 0, 1)
+
+    # ---------- I2C 센서·화면 ----------
+    def sensor_setup(self, kind, sda=255, scl=255, wait_ready=True):
+        """I2C 장치를 켭니다. sda/scl 을 주지 않으면 ESP32 보드의 Grove I2C 단자."""
+        if not self._io or not self._sens:
+            print("ESP32 main.py is old: download the ESP32 files again for sensor blocks")
+            raise OSError("ESP32 main.py has no sensor commands")
+        slot = S_OLED if kind == S_OLED32 else kind
+        self.pr.call("sinit", kind, sda & 255, scl & 255)
+        self._son[slot] = 0
+        if not wait_ready:
+            return
+        bit, err = 1 << slot, 1 << (slot + 11)
+        sw = StopWatch()
+        while sw.time() < 3000:
+            st = self._sget(True)[6]
+            if st & bit:
+                self._son[slot] = 1
+                if slot == S_TOF:
+                    print("ESP32 ToF:", _TOF_CHIP[(st >> 8) & 3])
+                return
+            if st & err:
+                break
+            wait(20)
+        print("ESP32: no", _S_NAME[slot], "- check SDA/SCL wiring and power")
+        raise OSError("ESP32 I2C device not found")
+
+    def _need(self, kind):
+        if kind not in self._son:
+            self.sensor_setup(kind)
+
+    def _sget(self, fresh=False):
+        # 한 반복 안에서 여러 블록이 값을 읽어도 블루투스·포트를 덜 쓰도록 15 ms 동안은 같은 값
+        t = self._sw.time()
+        if fresh or t - self._st >= 15:
+            self._sv = self.pr.call("sget")
+            self._st = t
+            self.monitor()
+            v = self._sv[5]
+            seq = v >> 8
+            if self._vseq is None:
+                self._vseq = seq  # 프로그램 시작 전에 들은 명령은 무시
+            elif seq != self._vseq:
+                self._vseq = seq
+                self._vev = v & 255
+                self._vev_t = t
+        return self._sv
+
+    def monitor(self, force=False):
+        """웹 에디터 「상태」 탭이 열려 있으면(stdin 'E' 프레임) 0.2초마다 "@ES:포트,빨강,초록,파랑,밝기,거리,음성,상태" 출력"""
+        t = self._sw.time()
+        if t - self._mon >= 200 and (force or rm_link.fresh("E")):
+            self._mon = t
+            print("@ES:%s,%d,%d,%d,%d,%d,%d,%d" % ((self._pn,) + tuple(self._sv)))
+
+    # OLED
+    def oled_clear(self):
+        self._need(S_OLED)
+        self.pr.call("sset", S_OLED, 0, 0)
+
+    def oled_text(self, row, text, size=1):
+        """row 번째 줄(1부터)에 글자. size 2·3 은 크게 (한 줄에 16/size 자). 영문·숫자만."""
+        self._need(S_OLED)
+        if isinstance(text, float):
+            text = ("%.2f" % text).rstrip("0").rstrip(".")
+        s = "".join(c if 32 <= ord(c) < 127 else "?" for c in str(text))
+        size = max(1, min(3, int(size)))
+        width = 16 // size
+        s = (s + " " * width)[:width]  # 줄의 남은 칸은 지움
+        row = max(0, min(7, int(row) - 1))
+        step = 14 // size
+        for i in range(0, width, step):
+            part = s[i:i + step]
+            self.pr.call("otxt", row | ((size - 1) << 4), i * size, part.encode())
+
+    # 음성 인식
+    def voice_id(self):
+        """새로 알아들은 명령 번호 (없으면 0). 한 번 읽으면 지워집니다."""
+        self._need(S_VOICE)
+        self._sget()
+        n = self._vev
+        self._vev = 0
+        return n
+
+    def voice_heard(self, n):
+        """명령 n 을 새로 알아들었으면 True (그 명령은 지워짐). 다른 명령은 1초 동안 남겨 둠."""
+        self._need(S_VOICE)
+        self._sget()
+        if self._vev and self._sw.time() - self._vev_t > 1000:
+            self._vev = 0
+        if self._vev and self._vev == int(n):
+            self._vev = 0
+            return True
+        return False
+
+    def voice_set(self, what, value):
+        """what 0 음량(1~7) · 1 음소거(1/0) · 2 깨어 있는 시간(초) · 3 대답 소리 재생(명령 번호)"""
+        self._need(S_VOICE)
+        self.pr.call("sset", S_VOICE, int(what), max(0, min(255, int(value))))
+
+    # 컬러
+    def color_raw(self):
+        self._need(S_COLOR)
+        return self._sget()[:4]
+
+    def color_rgb(self, i):
+        """i 0 빨강 · 1 초록 · 2 파랑 (0~255) · 3 밝기(0~100)"""
+        r, g, b, c = self.color_raw()
+        if i == 3:
+            return min(100, c * 100 // 21504)
+        m = max(r, g, b, 1)
+        return (r, g, b)[i] * 255 // m if c > 40 else 0
+
+    def color_name(self):
+        """'BLACK' 'WHITE' 'RED' 'YELLOW' 'GREEN' 'BLUE' (아무것도 없으면 'NONE')"""
+        r, g, b, c = self.color_raw()
+        if c < 40:
+            return "NONE"
+        mx, mn = max(r, g, b), min(r, g, b)
+        bright = c * 100 // 21504
+        sat = (mx - mn) * 100 // max(mx, 1)
+        if sat < 18:
+            return "WHITE" if bright > 25 else "BLACK"
+        if bright < 4:
+            return "BLACK"
+        d = mx - mn
+        if mx == r:
+            h = (60 * (g - b) // d) % 360
+        elif mx == g:
+            h = 60 * (b - r) // d + 120
+        else:
+            h = 60 * (r - g) // d + 240
+        if h < 25 or h >= 320:
+            return "RED"
+        if h < 75:
+            return "YELLOW"
+        if h < 170:
+            return "GREEN"
+        return "BLUE"
+
+    def color_is(self, name):
+        return self.color_name() == name
+
+    # 레이저 거리
+    def tof_mm(self):
+        """레이저 거리(mm). 아무것도 없으면 칩의 최대 거리 (0.5 m · 2 m · 4 m 형)."""
+        self._need(S_TOF)
+        return self._sget()[4]
 
     def add_channel(self, name, fmt):
         """ESP32 → 허브 로 값을 계속 보내는 채널."""

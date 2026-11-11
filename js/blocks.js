@@ -1,9 +1,9 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.17';
-import { t, cocoLabel } from './i18n.js?v=0.3.17';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.17';
+import { hub } from './hubs.js?v=0.3.18';
+import { t, cocoLabel } from './i18n.js?v=0.3.18';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.18';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -532,7 +532,8 @@ const RGB = [num('R'), num('G'), num('B')];
 // 네오픽셀 색 (허브 포트 전원을 아끼도록 밝기를 낮춘 값)
 const NP_COLORS = { RED: [60, 0, 0], ORANGE: [60, 20, 0], YELLOW: [50, 40, 0], GREEN: [0, 60, 0], CYAN: [0, 45, 45], BLUE: [0, 0, 60], VIOLET: [30, 0, 60], MAGENTA: [60, 0, 35], WHITE: [40, 40, 40], BLACK: [0, 0, 0] };
 const npColors = () => Object.keys(NP_COLORS).map((k) => [t('o.color.' + (k === 'BLACK' ? 'OFF' : k)), k]);
-export const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc'];
+export const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc',
+  'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof'];
 const pinOf = (b) => val(b, 'PIN', O.NONE, '0');
 def('rm_eio_dout', C.esp, null, [dd('PORT', lpfPorts), pinIn, dd('ON', () => opts('onoff', ['1', '0']))], 'stmt');
 G.forBlock['rm_eio_dout'] = (b) => `${esp(b.getFieldValue('PORT'))}.digital_write(${pinOf(b)}, ${b.getFieldValue('ON') === '1' ? 'True' : 'False'})\n`;
@@ -554,6 +555,27 @@ def('rm_eio_np_fill', C.esp, null, [dd('PORT', lpfPorts), ...RGB], 'stmt');
 G.forBlock['rm_eio_np_fill'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_fill(${val(b, 'R')}, ${val(b, 'G')}, ${val(b, 'B')})\n`;
 def('rm_eio_np_fillc', C.esp, null, [dd('PORT', lpfPorts), dd('COLOR', npColors)], 'stmt');
 G.forBlock['rm_eio_np_fillc'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel_fill(${NP_COLORS[b.getFieldValue('COLOR')].join(', ')})\n`;
+
+// ── ESP32 I2C 센서·화면 (OLED · 음성 인식 · 컬러 · 레이저 거리) — ESP32 쪽 rm_i2cdev.py · rm_vl53.py ──
+const espPort = (b) => esp(b.getFieldValue('PORT'));
+def('rm_es_setup', C.esp, null, [dd('PORT', lpfPorts), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4'])), num('SDA'), num('SCL')], 'stmt');
+G.forBlock['rm_es_setup'] = (b) => `${espPort(b)}.sensor_setup(${b.getFieldValue('KIND')}, ${val(b, 'SDA', O.NONE, '255')}, ${val(b, 'SCL', O.NONE, '255')})\n`;
+def('rm_es_oled_clear', C.esp, null, [dd('PORT', lpfPorts)], 'stmt');
+G.forBlock['rm_es_oled_clear'] = (b) => `${espPort(b)}.oled_clear()\n`;
+def('rm_es_oled_text', C.esp, null, [dd('PORT', lpfPorts), num('ROW'), { type: 'input_value', name: 'TEXT' }, dd('SIZE', () => opts('essize', ['1', '2', '3']))], 'stmt');
+G.forBlock['rm_es_oled_text'] = (b) => `${espPort(b)}.oled_text(${val(b, 'ROW', O.NONE, '1')}, ${G.valueToCode(b, 'TEXT', O.NONE) || "''"}, ${b.getFieldValue('SIZE')})\n`;
+def('rm_es_voice_id', C.esp, null, [dd('PORT', lpfPorts)], 'num');
+G.forBlock['rm_es_voice_id'] = (b) => [`${espPort(b)}.voice_id()`, O.FUNCTION_CALL];
+def('rm_es_voice_is', C.esp, null, [dd('PORT', lpfPorts), num('N')], 'bool');
+G.forBlock['rm_es_voice_is'] = (b) => [`${espPort(b)}.voice_heard(${val(b, 'N', O.NONE, '5')})`, O.FUNCTION_CALL];
+def('rm_es_voice_set', C.esp, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('esvoice', ['0', '1', '2', '3'])), num('VAL')], 'stmt');
+G.forBlock['rm_es_voice_set'] = (b) => `${espPort(b)}.voice_set(${b.getFieldValue('WHAT')}, ${val(b, 'VAL', O.NONE, '0')})\n`;
+def('rm_es_color', C.esp, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('escolor', ['0', '1', '2', '3']))], 'num');
+G.forBlock['rm_es_color'] = (b) => [`${espPort(b)}.color_rgb(${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
+def('rm_es_color_is', C.esp, null, [dd('PORT', lpfPorts), dd('COLOR', () => ['RED', 'YELLOW', 'GREEN', 'BLUE', 'WHITE', 'BLACK', 'NONE'].map((k) => [t('o.color.' + k), k]))], 'bool');
+G.forBlock['rm_es_color_is'] = (b) => [`${espPort(b)}.color_is(${str(b.getFieldValue('COLOR'))})`, O.FUNCTION_CALL];
+def('rm_es_tof', C.esp, null, [dd('PORT', lpfPorts)], 'num');
+G.forBlock['rm_es_tof'] = (b) => [`${espPort(b)}.tof_mm()`, O.FUNCTION_CALL];
 
 // ════════════════════════ 코드 생성 ════════════════════════
 

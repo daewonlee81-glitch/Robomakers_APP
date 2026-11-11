@@ -1,5 +1,5 @@
 {
-"version": "0.3.17",
+"version": "0.3.18",
 "files": [
 "./",
 "index.html",
@@ -46,7 +46,9 @@
 "esp32/lpf2.py",
 "esp32/main.py",
 "esp32/pupremote.py",
+"esp32/rm_i2cdev.py",
 "esp32/rm_io.py",
+"esp32/rm_vl53.py",
 "img/favicon.png",
 "img/icon-192.png",
 "img/icon-512.png",

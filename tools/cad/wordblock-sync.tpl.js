@@ -48,7 +48,10 @@
     rm_ai_obj_seen: 'obj', rm_ai_obj_value: 'obj', rm_ai_teach_is: 'teach', rm_ai_teach_value: 'teach',
     rm_ai_color_is: 'color', rm_ai_color_value: 'color', rm_ai_lcolor_seen: 'color', rm_ai_lcolor_value: 'color',
   };
-  const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc'];
+  const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc',
+    'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof'];
+  // ESP32 I2C 센서 블록의 시뮬레이터 값 (센서가 없으므로: 레이저 거리는 「아무것도 없음」 = 2000)
+  const ES_SIM = { rm_es_tof: 2000, rm_es_color: 0, rm_es_color_is: false, rm_es_voice_id: 0, rm_es_voice_is: false };
   const COL = { ai: '#00A88F', esp: '#3D7A3A', motor: '#0090F5' };
 
   // ───────────── 블록 정의 (에디터와 같은 이름 · 같은 필드) ─────────────
@@ -119,6 +122,16 @@
   def('rm_eio_np_setc', COL.esp, [dd('PORT', ports), num('N'), dd('COLOR', npColors)], 'stmt');
   def('rm_eio_np_fill', COL.esp, [dd('PORT', ports), ...RGB], 'stmt');
   def('rm_eio_np_fillc', COL.esp, [dd('PORT', ports), dd('COLOR', npColors)], 'stmt');
+  // ESP32 I2C 센서·화면
+  def('rm_es_setup', COL.esp, [dd('PORT', ports), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4'])), num('SDA'), num('SCL')], 'stmt');
+  def('rm_es_oled_clear', COL.esp, [dd('PORT', ports)], 'stmt');
+  def('rm_es_oled_text', COL.esp, [dd('PORT', ports), num('ROW'), { type: 'input_value', name: 'TEXT' }, dd('SIZE', () => opts('essize', ['1', '2', '3']))], 'stmt');
+  def('rm_es_voice_id', COL.esp, [dd('PORT', ports)], 'num');
+  def('rm_es_voice_is', COL.esp, [dd('PORT', ports), num('N')], 'bool');
+  def('rm_es_voice_set', COL.esp, [dd('PORT', ports), dd('WHAT', () => opts('esvoice', ['0', '1', '2', '3'])), num('VAL')], 'stmt');
+  def('rm_es_color', COL.esp, [dd('PORT', ports), dd('WHAT', () => opts('escolor', ['0', '1', '2', '3']))], 'num');
+  def('rm_es_color_is', COL.esp, [dd('PORT', ports), dd('COLOR', () => opts('color', ['RED', 'YELLOW', 'GREEN', 'BLUE', 'WHITE', 'BLACK', 'NONE']))], 'bool');
+  def('rm_es_tof', COL.esp, [dd('PORT', ports)], 'num');
 
   // ───────────── 파이썬 (실제 허브로 보낼 코드 — 에디터와 같은 결과) ─────────────
   const PY = window.python?.pythonGenerator;
@@ -170,6 +183,15 @@
     g.rm_eio_np_setc = (b) => `${P(b)}.neopixel_set(${pv(b, 'N', '1')}, ${NP_COLORS[b.getFieldValue('COLOR')].join(', ')})\n`;
     g.rm_eio_np_fill = (b) => `${P(b)}.neopixel_fill(${pv(b, 'R')}, ${pv(b, 'G')}, ${pv(b, 'B')})\n`;
     g.rm_eio_np_fillc = (b) => `${P(b)}.neopixel_fill(${NP_COLORS[b.getFieldValue('COLOR')].join(', ')})\n`;
+    g.rm_es_setup = (b) => `${P(b)}.sensor_setup(${b.getFieldValue('KIND')}, ${pv(b, 'SDA', '255')}, ${pv(b, 'SCL', '255')})\n`;
+    g.rm_es_oled_clear = (b) => `${P(b)}.oled_clear()\n`;
+    g.rm_es_oled_text = (b) => `${P(b)}.oled_text(${pv(b, 'ROW', '1')}, ${PY.valueToCode(b, 'TEXT', PO.NONE) || "''"}, ${b.getFieldValue('SIZE')})\n`;
+    g.rm_es_voice_id = (b) => [`${P(b)}.voice_id()`, F];
+    g.rm_es_voice_is = (b) => [`${P(b)}.voice_heard(${pv(b, 'N', '5')})`, F];
+    g.rm_es_voice_set = (b) => `${P(b)}.voice_set(${b.getFieldValue('WHAT')}, ${pv(b, 'VAL')})\n`;
+    g.rm_es_color = (b) => [`${P(b)}.color_rgb(${b.getFieldValue('WHAT')})`, F];
+    g.rm_es_color_is = (b) => [`${P(b)}.color_is('${b.getFieldValue('COLOR')}')`, F];
+    g.rm_es_tof = (b) => [`${P(b)}.tof_mm()`, F];
   }
 
   // ───────────── 시뮬레이터 (자바스크립트) ─────────────
@@ -224,7 +246,8 @@
     for (const k of ESP_IO_BLOCKS) {
       g[k] = (b) => {
         // 입력 값 안의 블록도 실행되도록 계산은 해 둡니다
-        for (const n of ['PIN', 'VAL', 'ANGLE', 'COUNT', 'N', 'R', 'G', 'B']) if (b.getInput(n)) jv(b, n);
+        for (const n of ['PIN', 'VAL', 'ANGLE', 'COUNT', 'N', 'R', 'G', 'B', 'ROW', 'TEXT', 'SDA', 'SCL']) if (b.getInput(n)) jv(b, n);
+        if (k in ES_SIM) return [`api.wbNoDev('esp', ${JSON.stringify(ES_SIM[k])})`, F];
         if (k === 'rm_eio_servo') return `await ${X}.servoWait(api, ${jv(b, 'PIN')}, ${jv(b, 'ANGLE')});\n`;
         if (k === 'rm_eio_din') return [`api.wbNoDev('esp', false)`, F];
         if (k === 'rm_eio_ain') return [`api.wbNoDev('esp', 0)`, F];
@@ -265,6 +288,14 @@
             blk('rm_eio_np_init', { PIN: n(12), COUNT: n(8) }), blk('rm_eio_np_setc', { N: n(1) }),
             blk('rm_eio_np_set', { N: n(1), R: n(60), G: n(0), B: n(0) }), blk('rm_eio_np_fillc'),
             blk('rm_eio_np_fill', { R: n(0), G: n(0), B: n(60) }));
+        }
+        if (hub?.lpf2 && items.some((x) => x.type === 'rm_eio_dout') && !items.some((x) => x.type === 'rm_es_tof')) {
+          items.push(
+            label(t('tb.esdist')), blk('rm_es_tof'),
+            label(t('tb.escolor')), blk('rm_es_color'), blk('rm_es_color_is'),
+            label(t('tb.esvoice')), blk('rm_es_voice_is', { N: n(22) }), blk('rm_es_voice_id'), blk('rm_es_voice_set', { VAL: n(5) }),
+            label(t('tb.esoled')), blk('rm_es_oled_text', { ROW: n(1), TEXT: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } }), blk('rm_es_oled_clear'),
+            label(t('tb.essetup')), blk('rm_es_setup', { SDA: n(5), SCL: n(4) }));
         }
       }
     } catch (e) {

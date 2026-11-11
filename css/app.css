@@ -421,3 +421,17 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .done-card b { display: block; font-size: 18px; }
 .done-card p { margin: 8px 0 14px; color: var(--ink-2); font-size: 14px; line-height: 1.5; white-space: pre-line; }
 .done-card button { height: 36px; min-width: 96px; border-radius: 10px; border: 0; background: var(--brand); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+
+/* ESP32 I2C 센서 모니터 (상태 탭) */
+.es-card { margin-top: 10px; }
+.es-card.es-stale { opacity: .55; }
+.es-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.es-row:first-of-type { border-top: 0; }
+.es-row b { min-width: 110px; }
+.es-row small { color: var(--ink-2); width: 100%; padding-left: 120px; }
+.es-big { font-size: 18px; font-weight: 800; }
+.es-bar { flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: #EEF2F7; overflow: hidden; }
+.es-bar i { display: block; height: 100%; background: var(--brand); transition: width .2s; }
+.es-sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); }
+.es-hit .es-big { color: #6B3FC2; animation: rmGlow .6s ease-in-out 3 alternate; }
+.es-no { color: #A15C00; }

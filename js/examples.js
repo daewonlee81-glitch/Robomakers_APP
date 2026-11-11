@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.17';
+import { t } from './i18n.js?v=0.3.18';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -253,6 +253,75 @@ EXAMPLES.esp32io = {
       B('rm_wait', {}, { SEC: N(1) }),
     ]),
   ])),
+};
+
+// ESP32 I2C 센서·화면 예제 (ESP32 는 Grove I2C 단자에 센서, 허브 포트 D 에 ESP32 · 바퀴 A/E)
+const esN = (n) => ({ type: 'math_number', fields: { NUM: n } });
+const esCmp = (op, a, b) => ({ type: 'logic_compare', fields: { OP: op }, inputs: { A: V(a), B: V(b) } });
+const esDrive = () => B('rm_drive_setup', { L: 'A', R: 'E', WD: 56, AT: 112, GYRO: false });
+EXAMPLES.estof = {
+  title: () => t('ex.estof'),
+  hubs: ['prime'],
+  build: () => {
+    const tof = () => B('rm_es_tof', { PORT: 'D' });
+    return ws(start([
+      esDrive(),
+      B('rm_es_oled_clear', { PORT: 'D' }),
+      B('rm_es_oled_text', { PORT: 'D', SIZE: '1' }, { ROW: N(1), TEXT: T(t('ex.es.dist')) }),
+      { type: 'controls_whileUntil', fields: { MODE: 'UNTIL' }, inputs: {
+        BOOL: V(esCmp('LT', tof(), esN(150))),
+        DO: DO([
+          B('rm_es_oled_text', { PORT: 'D', SIZE: '3' }, { ROW: N(3), TEXT: V(tof()) }),
+          B('rm_drive_drive', {}, { SPEED: N(150), TURN: N(0) }),
+          B('rm_wait', {}, { SEC: N(0.05) }),
+        ]) } },
+      B('rm_drive_stop'),
+      B('rm_es_oled_text', { PORT: 'D', SIZE: '3' }, { ROW: N(3), TEXT: T('STOP') }),
+    ]));
+  },
+};
+EXAMPLES.esvoice = {
+  title: () => t('ex.esvoice'),
+  hubs: ['prime'],
+  build: () => {
+    const heard = (n) => B('rm_es_voice_is', { PORT: 'D' }, { N: N(n) });
+    return ws(start([
+      esDrive(),
+      B('rm_es_voice_set', { PORT: 'D', WHAT: '0' }, { VAL: N(5) }),
+      B('rm_es_oled_text', { PORT: 'D', SIZE: '1' }, { ROW: N(1), TEXT: T(t('ex.es.ready')) }),
+      forever([
+        ifElif([
+          [heard(22), [B('rm_drive_straight', {}, { DIST: N(200) })]], // 앞으로
+          [heard(23), [B('rm_drive_straight', {}, { DIST: N(-200) })]], // 뒤로
+          [heard(25), [B('rm_drive_turn', {}, { ANGLE: N(-90) })]], // 왼쪽으로 90도
+          [heard(28), [B('rm_drive_turn', {}, { ANGLE: N(90) })]], // 오른쪽으로 90도
+        ]),
+        B('rm_wait', {}, { SEC: N(0.05) }),
+      ]),
+    ]));
+  },
+};
+EXAMPLES.escolor = {
+  title: () => t('ex.escolor'),
+  hubs: ['prime', 'essential'],
+  build: () => {
+    const is = (c) => B('rm_es_color_is', { PORT: 'A', COLOR: c });
+    const val = (w) => B('rm_es_color', { PORT: 'A', WHAT: w });
+    return ws(start([
+      B('rm_es_oled_clear', { PORT: 'A' }),
+      forever([
+        B('rm_es_oled_text', { PORT: 'A', SIZE: '1' }, { ROW: N(1), TEXT: V({ type: 'text_join', extraState: { itemCount: 2 }, inputs: { ADD0: T('R '), ADD1: V(val('0')) } }) }),
+        B('rm_es_oled_text', { PORT: 'A', SIZE: '1' }, { ROW: N(2), TEXT: V({ type: 'text_join', extraState: { itemCount: 2 }, inputs: { ADD0: T('G '), ADD1: V(val('1')) } }) }),
+        B('rm_es_oled_text', { PORT: 'A', SIZE: '1' }, { ROW: N(3), TEXT: V({ type: 'text_join', extraState: { itemCount: 2 }, inputs: { ADD0: T('B '), ADD1: V(val('2')) } }) }),
+        ifElif([
+          [is('RED'), [B('rm_light', { COLOR: 'RED' }), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('RED') })]],
+          [is('GREEN'), [B('rm_light', { COLOR: 'GREEN' }), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('GREEN') })]],
+          [is('BLUE'), [B('rm_light', { COLOR: 'BLUE' }), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('BLUE') })]],
+        ], [B('rm_light_off'), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('-') })]),
+        B('rm_wait', {}, { SEC: N(0.1) }),
+      ]),
+    ]));
+  },
 };
 
 export function emptyProgram() {

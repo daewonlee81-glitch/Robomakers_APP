@@ -10,6 +10,10 @@
 # 현재 명령:
 #   p.add_command('pmode', '', 'BB'); p.add_command('inp', '8H', ''); p.add_command('dout', '', 'BB')
 #   p.add_command('pwm', '', 'BB');   p.add_command('servo', '', 'BB'); p.add_command('npx', '', '6B')
+#   I2C 센서·화면: p.add_command('sinit', '', 'BBB'); p.add_command('sget', '7H', '')
+#                  p.add_command('sset', '', 'BBB'); p.add_command('otxt', '', 'BB14s')
+#   main.py 의 while 반복에서 rm_tick() 을 함께 부릅니다 (센서 값을 미리 읽어 둠).
+#   드라이버는 따로 복사하는 rm_i2cdev.py · rm_vl53.py (처음 쓸 때 import)
 
 from machine import Pin, PWM, ADC
 
@@ -147,3 +151,140 @@ def npx(op, a, b, c, d, show):
         _np.fill((a, b, c))
     if show and _np is not None:
         _np.write()
+
+
+# ---------- I2C 센서 · 화면 ----------
+# 종류: 1 OLED(128×64) · 2 음성 인식 DF2301Q · 3 컬러 TCS34725 · 4 레이저 거리(VL6180X/VL53L0X/VL53L1X) · 5 OLED(128×32)
+# 허브는 sget 하나로 모든 값을 읽습니다: (빨강, 초록, 파랑, 밝기, 거리mm, 음성(순번<<8|번호), 상태)
+#   상태 = 준비된 장치 비트(1<<종류) | 레이저 칩 번호<<8 (1 VL6180X · 2 VL53L0X · 3 VL53L1X) | 오류 비트(1<<(종류+11))
+from machine import SoftI2C
+from time import ticks_ms, ticks_diff
+
+try:  # 보드의 Grove I2C 단자
+    from lms_esp32 import SDA_PIN, SCL_PIN
+except ImportError:
+    SDA_PIN, SCL_PIN = 5, 4
+
+S_OLED, S_VOICE, S_COLOR, S_TOF, S_OLED32 = 1, 2, 3, 4, 5
+_bus = {}
+_dev = {}
+_sval = [0, 0, 0, 0, 0, 0, 0]
+_spend = []    # 처리할 sinit (종류, sda, scl) — 콜백 밖(rm_tick)에서 천천히 초기화
+_s = {"vseq": 0, "vprev": 0, "vt": 0, "ct": 0, "dirty": False, "ot": 0}
+
+
+def _i2c(sda, scl):
+    if sda == 255 or scl == 255:
+        sda, scl = SDA_PIN, SCL_PIN
+    if sda in RESERVED or scl in RESERVED:
+        raise OSError("GPIO %d/%d is used for the hub link" % (sda, scl))
+    k = (sda, scl)
+    if k not in _bus:
+        for p in k:
+            _free(p)
+        _bus[k] = SoftI2C(sda=Pin(sda), scl=Pin(scl), freq=400000)
+    return _bus[k]
+
+
+def _sopen(kind, sda, scl):
+    h = 32 if kind == S_OLED32 else 64
+    kind = S_OLED if kind == S_OLED32 else kind
+    _dev.pop(kind, None)
+    _sval[6] &= ~((1 << kind) | (1 << (kind + 11)) | (0xF00 if kind == S_TOF else 0))
+    try:
+        i2c = _i2c(sda, scl)
+        if kind == S_TOF:
+            import rm_vl53
+            d = rm_vl53.open(i2c)
+            _sval[6] |= d.chip << 8
+            _sval[4] = rm_vl53.MAX_MM[d.chip]
+        else:
+            import rm_i2cdev
+            d = rm_i2cdev.OLED(i2c, h) if kind == S_OLED else rm_i2cdev.Voice(i2c) if kind == S_VOICE else rm_i2cdev.Color(i2c)
+        _dev[kind] = d
+        _sval[6] |= 1 << kind
+        print("rm_io: I2C", kind, "ok")
+    except Exception as e:
+        _sval[6] |= 1 << (kind + 11)
+        print("rm_io: I2C", kind, e)
+
+
+def sinit(kind, sda, scl):
+    _spend.append((kind, sda, scl))
+
+
+def sget():
+    return tuple(_sval)
+
+
+def sset(kind, what, v):
+    d = _dev.get(kind)
+    if d is None:
+        return
+    try:
+        if kind == S_OLED:
+            if what == 0:
+                d.fill(0)
+            elif what == 1:
+                d.cmd(0x81)
+                d.cmd(v)
+            _s["dirty"] = True
+        elif kind == S_VOICE:
+            (d.volume, d.mute, d.wake_time, d.play)[what](v)
+        elif kind == S_COLOR and what == 0:
+            d.gain(v)
+    except Exception as e:
+        print("rm_io: sset", kind, e)
+
+
+def otxt(row, col, text):
+    """OLED 글자: row 0~7 (8 px 줄), 위 4비트 = 크기-1 · col 0~15 · text 최대 14자(영문·숫자)"""
+    d = _dev.get(S_OLED)
+    if d is None:
+        return
+    k = (row >> 4) + 1
+    y = (row & 15) * 8
+    t = bytes(text).split(b"\x00")[0].decode()
+    w = len(t) * 8 * k
+    d.fill_rect(col * 8, y, w, 8 * k, 0)
+    if k == 1:
+        d.text(t, col * 8, y, 1)
+    else:
+        d.big_text(t, col * 8, y, k)
+    _s["dirty"] = True
+
+
+def rm_tick():
+    """main.py 의 while 반복에서 부릅니다: 미뤄 둔 초기화 · 센서 값 미리 읽기 · OLED 다시 그리기"""
+    if _spend:
+        _sopen(*_spend.pop(0))
+        return
+    now = ticks_ms()
+    try:
+        d = _dev.get(S_TOF)
+        if d:
+            mm = d.poll()
+            if mm is not None:
+                _sval[4] = mm
+        d = _dev.get(S_COLOR)
+        if d and ticks_diff(now, _s["ct"]) >= 20:
+            _s["ct"] = now
+            v = d.read()
+            if v:
+                _sval[0], _sval[1], _sval[2], _sval[3] = v
+        d = _dev.get(S_VOICE)
+        if d and ticks_diff(now, _s["vt"]) >= 100:  # 음성 모듈은 너무 자주 읽지 않음
+            _s["vt"] = now
+            n = d.cmd_id()
+            if n and n != _s["vprev"]:
+                _s["vseq"] = (_s["vseq"] + 1) & 255
+                _sval[5] = (_s["vseq"] << 8) | n
+            _s["vprev"] = n
+        d = _dev.get(S_OLED)
+        if d and _s["dirty"] and ticks_diff(now, _s["ot"]) >= 40:
+            _s["ot"] = now
+            _s["dirty"] = False
+            d.show()
+    except Exception as e:
+        print("rm_io: I2C", e)
+
