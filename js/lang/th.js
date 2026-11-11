@@ -737,4 +737,8 @@ export default {
   "ex.escolor": "เซนเซอร์ ESP32: แยกสีด้วยเซนเซอร์สี",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "มอเตอร์ {0}",
+  "mp.hint": "เลือกหลายตัวเพื่อให้เคลื่อนพร้อมกัน",
+  "mp.all": "เลือกทั้งหมด",
+  "mp.one": "ตัวเดียว",
 };

@@ -737,4 +737,8 @@ export default {
   "ex.escolor": "ESP32 感測器:用顏色感測器辨識顏色",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "馬達 {0}",
+  "mp.hint": "選多個會一起動",
+  "mp.all": "全選",
+  "mp.one": "只選一個",
 };

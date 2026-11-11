@@ -737,4 +737,8 @@ export default {
   "ex.escolor": "ESP32 センサー:カラーセンサーで色を見分ける",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "モーター {0}",
+  "mp.hint": "複数選ぶといっしょに動きます",
+  "mp.all": "すべて選ぶ",
+  "mp.one": "1つだけ",
 };

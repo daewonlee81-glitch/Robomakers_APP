@@ -4,9 +4,9 @@
 //  · 📲 버튼: 설치 창 (설치 단추 또는 기기별 방법 · 오프라인 준비 상태 · AI 카메라 모델 받아 두기)
 //  · 새 버전이 올라오면 「다시 불러오기」 알림
 
-import { t } from './i18n.js?v=0.3.18';
-import { APP } from './config.js?v=0.3.18';
-import { OFFLINE_URLS } from './aicam.js?v=0.3.18';
+import { t } from './i18n.js?v=0.3.19';
+import { APP } from './config.js?v=0.3.19';
+import { OFFLINE_URLS } from './aicam.js?v=0.3.19';
 
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 

@@ -736,4 +736,8 @@ export default {
   "ex.escolor": "ESP32 sensors: recognise colors with the color sensor",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "motor {0}",
+  "mp.hint": "Pick several to move them together",
+  "mp.all": "Select all",
+  "mp.one": "Just one",
 };

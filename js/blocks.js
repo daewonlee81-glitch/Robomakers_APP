@@ -1,9 +1,10 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.18';
-import { t, cocoLabel } from './i18n.js?v=0.3.18';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.18';
+import { hub } from './hubs.js?v=0.3.19';
+import { t, cocoLabel } from './i18n.js?v=0.3.19';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.19';
+import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.19';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -213,6 +214,14 @@ G.forBlock['rm_motor_reset'] = (b) => `${motor(b.getFieldValue('PORT'))}.reset_a
 
 def('rm_motor_value', C.motor, null, [dd('PORT', motorPorts), dd('WHAT', () => opts('mval', ['angle', 'speed']))], 'num');
 G.forBlock['rm_motor_value'] = (b) => [`${motor(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+
+// 모터 블록에서 포트 여러 개 고르기 (A+E …) — 값 블록(각도·속도)은 하나만
+installMultiPorts(Blockly, {
+  ports: () => hub().motorPorts,
+  label: (k, p) => (k === 'port' ? t('mp.port', p) : t('mp.' + k)),
+  types: MULTI_PORT_BLOCKS,
+  gens: [{ gen: G, js: false }],
+});
 
 // ════════════════════════ 주행 (DriveBase) ════════════════════════
 def('rm_drive_setup', C.drive, null,

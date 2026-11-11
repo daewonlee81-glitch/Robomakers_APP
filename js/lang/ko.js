@@ -736,4 +736,8 @@ export default {
   "ex.escolor": "ESP32 센서: 컬러 센서로 색 알아보기",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "모터 {0}",
+  "mp.hint": "여러 개를 고르면 함께 움직여요",
+  "mp.all": "모두 고르기",
+  "mp.one": "하나만",
 };

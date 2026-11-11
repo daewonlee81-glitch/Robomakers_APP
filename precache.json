@@ -1,5 +1,5 @@
 {
-"version": "0.3.18",
+"version": "0.3.19",
 "files": [
 "./",
 "index.html",
@@ -28,6 +28,7 @@
 "js/learn.js",
 "js/lessons.js",
 "js/main.js",
+"js/multiport.js",
 "js/pwa.js",
 "js/pybricks.js",
 "js/statusmon.js",

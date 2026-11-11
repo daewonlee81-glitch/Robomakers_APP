@@ -737,4 +737,8 @@ export default {
   "ex.escolor": "ESP32 传感器:用颜色传感器识别颜色",
   "ex.es.dist": "Dist mm",
   "ex.es.ready": "Say: Hello Robot",
+  "mp.port": "电机 {0}",
+  "mp.hint": "选多个会一起动",
+  "mp.all": "全选",
+  "mp.one": "只选一个",
 };

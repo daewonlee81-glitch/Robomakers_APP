@@ -256,6 +256,19 @@
     }
   }
 
+  // ───────────── 모터 포트 여러 개 고르기 (에디터 js/multiport.js 와 같은 코드) ─────────────
+  /*@MULTIPORT@*/
+  try {
+    installMultiPorts(Blockly, {
+      ports: () => W.hub()?.motorPorts || ['A', 'B'],
+      label: (k, p) => (k === 'port' ? t('mp.port', p) : t('mp.' + k)),
+      types: MULTI_PORT_BLOCKS,
+      gens: [{ gen: window.python?.pythonGenerator, js: false }, { gen: window.javascript?.javascriptGenerator, js: true }],
+    });
+  } catch (e) {
+    console.warn('wordblock-sync multiport', e);
+  }
+
   // ───────────── 도구 상자 ─────────────
   const blk = (type, inputs, fields) => ({ kind: 'block', type, ...(inputs ? { inputs } : {}), ...(fields ? { fields } : {}) });
   const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
