@@ -4,8 +4,8 @@
 // 「이 단계 블록 불러오기」로 작업 공간을 그 단계 프로그램으로 바꾼 뒤 새로 생긴 블록을 노랗게 빛나게 합니다.
 
 /* global Blockly */
-import { t } from './i18n.js?v=0.3.19';
-import { LESSONS, lessonWorkspace, newBlockIds } from './lessons.js?v=0.3.19';
+import { t } from './i18n.js?v=0.3.20';
+import { LESSONS, lessonWorkspace, newBlockIds } from './lessons.js?v=0.3.20';
 
 const STORE = 'rm-learn';
 const GLOW_MS = 10000;

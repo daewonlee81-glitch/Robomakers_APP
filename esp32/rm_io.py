@@ -12,6 +12,7 @@
 #   p.add_command('pwm', '', 'BB');   p.add_command('servo', '', 'BB'); p.add_command('npx', '', '6B')
 #   I2C 센서·화면: p.add_command('sinit', '', 'BBB'); p.add_command('sget', '7H', '')
 #                  p.add_command('sset', '', 'BBB'); p.add_command('otxt', '', 'BB14s')
+#                  p.add_command('sget2', '8h', ''); p.add_command('sget3', '8h', '')
 #   main.py 의 while 반복에서 rm_tick() 을 함께 부릅니다 (센서 값을 미리 읽어 둠).
 #   드라이버는 따로 복사하는 rm_i2cdev.py · rm_vl53.py (처음 쓸 때 import)
 
@@ -166,9 +167,15 @@ except ImportError:
     SDA_PIN, SCL_PIN = 5, 4
 
 S_OLED, S_VOICE, S_COLOR, S_TOF, S_OLED32 = 1, 2, 3, 4, 5
+# 추가 센서: 6 초음파 HC-SR04(트리거, 에코 핀) · 7 DHT11 · 8 DHT22 (핀) · 9 MPU6050 · 10 BH1750 · 11 BME280 (I2C)
+#   sget2 (8h): 초음파 mm · DHT 온도×10 · DHT 습도×10 · 기울기X×10 · 기울기Y×10 · 회전Z °/s · 밝기 lux · 가속도Z g×100
+#   sget3 (8h): BME 온도×10 · BME 습도×10 · BME 기압 hPa×10 · 가속도X g×100 · 가속도Y g×100 · (예비) · 준비 비트 · 오류 비트 (1<<(종류-6))
+S_SONAR, S_DHT11, S_DHT22, S_IMU, S_LUX, S_ENV = 6, 7, 8, 9, 10, 11
 _bus = {}
 _dev = {}
 _sval = [0, 0, 0, 0, 0, 0, 0]
+_s2 = [4000, 0, 0, 0, 0, 0, 0, 0]
+_s3 = [0, 0, 0, 0, 0, 0, 0, 0]
 _spend = []    # 처리할 sinit (종류, sda, scl) — 콜백 밖(rm_tick)에서 천천히 초기화
 _s = {"vseq": 0, "vprev": 0, "vt": 0, "ct": 0, "dirty": False, "ot": 0}
 
@@ -186,7 +193,99 @@ def _i2c(sda, scl):
     return _bus[k]
 
 
+def _sopen2(kind, a, b):
+    """추가 센서 (종류 6~11). a, b = 핀 (초음파: 트리거·에코 · DHT: 데이터 · I2C: SDA·SCL)"""
+    if kind == S_DHT22:
+        _dev.pop(S_DHT11, None)
+    bit = 1 << (min(kind, S_DHT11 if kind == S_DHT22 else kind) - 6)
+    _dev.pop(kind, None)
+    _s3[6] &= ~bit
+    _s3[7] &= ~bit
+    try:
+        import rm_i2cdev as D
+        if kind == S_SONAR:
+            for p in (a, b):
+                if p in RESERVED:
+                    raise OSError("GPIO %d is used for the hub link" % p)
+                _free(p)
+            d = D.Sonar(a, b)
+        elif kind in (S_DHT11, S_DHT22):
+            if a in RESERVED:
+                raise OSError("GPIO %d is used for the hub link" % a)
+            _free(a)
+            d = D.DHT(a, kind == S_DHT22)
+            kind = S_DHT11  # 둘 다 같은 자리
+        else:
+            d = (D.IMU, D.Lux, D.Env)[kind - S_IMU](_i2c(a, b))
+        _dev[kind] = d
+        # 켜자마자 첫 값을 넣어 둡니다 (DHT 는 2초에 한 번만 잴 수 있어 방금 잰 값을 씀)
+        if kind == S_SONAR:
+            _s2[0] = d.read()
+        elif kind == S_DHT11:
+            _s2[1], _s2[2] = _clip(d.d.temperature() * 10), _clip(d.d.humidity() * 10)
+            _s["dt"] = ticks_ms()
+        elif kind == S_ENV:
+            t, h, p = d.read()
+            _s3[0], _s3[1], _s3[2] = _clip(t * 10), _clip(h * 10), _clip(p * 10)
+        _s3[6] |= bit
+        print("rm_io: sensor", kind, "ok")
+    except Exception as e:
+        _s3[7] |= bit
+        print("rm_io: sensor", kind, e)
+
+
+def sget2():
+    return tuple(_s2)
+
+
+def sget3():
+    return tuple(_s3)
+
+
+def _clip(v):
+    return max(-32768, min(32767, int(v)))
+
+
+def _slow(now):
+    """시간이 걸리는 센서(초음파·DHT·BME280)는 한 번에 하나씩"""
+    d = _dev.get(S_SONAR)
+    if d and ticks_diff(now, _s.get("ut", 0)) >= 60:
+        _s["ut"] = now
+        _s2[0] = d.read()
+        return
+    d = _dev.get(S_DHT11)
+    if d and ticks_diff(now, _s.get("dt", 0)) >= 2000:
+        _s["dt"] = now
+        t, h = d.read()
+        _s2[1], _s2[2] = _clip(t * 10), _clip(h * 10)
+        return
+    d = _dev.get(S_ENV)
+    if d and ticks_diff(now, _s.get("et", 0)) >= 500:
+        _s["et"] = now
+        t, h, p = d.read()
+        _s3[0], _s3[1], _s3[2] = _clip(t * 10), _clip(h * 10), _clip(p * 10)
+
+
+def _fast(now):
+    d = _dev.get(S_IMU)
+    if d and ticks_diff(now, _s.get("it", 0)) >= 20:
+        _s["it"] = now
+        ax, ay, az, gx, gy, gz = d.read()
+        import math
+        _s2[3] = _clip(math.degrees(math.atan2(ay, az)) * 10)
+        _s2[4] = _clip(math.degrees(math.atan2(-ax, math.sqrt(ay * ay + az * az))) * 10)
+        _s2[5] = _clip(gz)
+        _s2[7] = _clip(az)
+        _s3[3], _s3[4] = _clip(ax), _clip(ay)
+    d = _dev.get(S_LUX)
+    if d and ticks_diff(now, _s.get("lt", 0)) >= 150:
+        _s["lt"] = now
+        _s2[6] = _clip(d.read())
+
+
 def _sopen(kind, sda, scl):
+    if kind >= S_SONAR:
+        return _sopen2(kind, sda, scl)
     h = 32 if kind == S_OLED32 else 64
     kind = S_OLED if kind == S_OLED32 else kind
     _dev.pop(kind, None)
@@ -280,6 +379,11 @@ def rm_tick():
                 _s["vseq"] = (_s["vseq"] + 1) & 255
                 _sval[5] = (_s["vseq"] << 8) | n
             _s["vprev"] = n
+        for f in (_fast, _slow):
+            try:
+                f(now)
+            except Exception as e:  # DHT 는 가끔 읽기에 실패합니다 — 다음에 다시
+                print("rm_io: sensor", e)
         d = _dev.get(S_OLED)
         if d and _s["dirty"] and ticks_diff(now, _s["ot"]) >= 40:
             _s["ot"] = now

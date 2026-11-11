@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAD = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, '..', 'mindstorms-cad'))
 LANGS = {'ko': 'ko', 'en': 'en', 'ja': 'ja', 'zh': 'zh-CN', 'es': 'es'}
 LIBS = ['rm_aicam', 'rm_esp32', 'rm_husky', 'rm_link', 'rm_pad', 'pupremote_hub', 'bluepad']
-WANT = r'^(b\.rm_ai_(obj|teach|color|lcolor)_|b\.rm_eio_|b\.rm_es_|b\.rm_motor_pair_|tb\.es(dist|color|voice|oled|setup)$|mp\.[a-z]+$|o\.(objv|teachv|colorv|lcolv|onoff|pull|eskind|essize|esvoice|escolor)\.|o\.color\.[A-Z]+$)'
+WANT = r'^(b\.rm_ai_(obj|teach|color|lcolor)_|b\.rm_eio_|b\.rm_es_|b\.rm_motor_pair_|tb\.es(dist|color|voice|oled|setup|envh|imu|pin)$|mp\.[a-z]+$|o\.(objv|teachv|colorv|lcolv|onoff|pull|eskind|essize|esvoice|escolor|esdht|esimu|esenv|esain|esdin)\.|o\.color\.[A-Z]+$)'
 WANT_KEYS = {'coco.any', 'teach.class', 'color.slot', 'tb.object', 'tb.teach', 'tb.color', 'tb.lcolor', 'tb.espio', 'tb.neopixel'}
 
 # 시뮬레이터에서는 다르게 안내할 문구

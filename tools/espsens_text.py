@@ -8,7 +8,7 @@ import os
 import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KEYS_RE = r"(?:cat\.espsens|tb\.es(?:dist|color|voice|oled|setup)|b\.rm_es_[^'\"]+|o\.es(?:kind|size|voice|color)\.[^'\"]+|esp\.gen\.tick|rule\.esclash|st\.v\.esp|st\.k\.e|es\.(?:dist|color|voice|missing|heard|notyet|oledOk|title|empty|help)|ex\.es(?:voice|tof|color)[^'\"]*)"
+KEYS_RE = r"(?:cat\.espsens|tb\.es(?:dist|color|voice|oled|setup)|b\.rm_es_[^'\"]+|o\.es(?:kind|size|voice|color)\.[^'\"]+|esp\.gen\.tick|rule\.esclash|st\.v\.esp|st\.k\.e|es\.(?:dist|color|voice|missing|heard|notyet|oledOk|title|empty|help)|ex\.es(?:voice|tof|color|\.)[^'\"]*)"
 
 TEXT = {
 'ko': {
@@ -26,7 +26,7 @@ TEXT = {
  'es.help': '▶ 실행 중에는 프로그램이 쓰는 센서만 보입니다. 연결된 모든 센서를 보려면 ▶ 상태 확인을 누르세요. 음성 센서는 깨우는 말을 한 뒤 명령을 말하면 번호가 나옵니다.',
  'rule.esclash': '컬러 센서와 레이저 거리 센서를 ESP32 {0} 의 같은 핀에서 함께 쓰고 있어요. 두 센서는 I2C 주소가 같아(0x29) 함께 읽히지 않습니다. 하나만 쓰거나, 「연결 · SDA·SCL 핀」 블록으로 다른 핀에 연결하세요.',
  'cat.espsens': 'ESP32 센서·화면',
- 'tb.esdist': '레이저 거리 (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': '거리 (레이저 TOF050C · TOF200C · TOF400C · VL53L0X · 초음파 HC-SR04)',
  'tb.escolor': '컬러 센서 (TCS34725)',
  'tb.esvoice': '음성 인식 (DFRobot DF2301Q)',
  'tb.esoled': 'OLED 화면 (SSD1306)',
@@ -74,7 +74,7 @@ TEXT = {
  'es.help': 'While ▶ running, only the sensors your program uses are shown. Press ▶ Check status to see every connected sensor. For the voice sensor, say the wake word and then a command to see its number.',
  'rule.esclash': 'The color sensor and the laser distance sensor are both used on the same pins of ESP32 {0}. They share I2C address 0x29 and cannot be read together. Use only one, or wire one to other pins with the “connect · SDA/SCL pin” block.',
  'cat.espsens': 'ESP32 sensors',
- 'tb.esdist': 'Laser distance (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': 'Distance (laser TOF050C · TOF200C · TOF400C · VL53L0X · ultrasonic HC-SR04)',
  'tb.escolor': 'Color sensor (TCS34725)',
  'tb.esvoice': 'Voice recognition (DFRobot DF2301Q)',
  'tb.esoled': 'OLED display (SSD1306)',
@@ -122,7 +122,7 @@ TEXT = {
  'es.help': '▶ 実行中はプログラムが使うセンサーだけ表示されます。つながっているすべてのセンサーを見るには ▶ 状態を確認 を押してください。音声センサーは起動ワードのあとにコマンドを言うと番号が出ます。',
  'rule.esclash': 'カラーセンサーとレーザー距離センサーを ESP32 {0} の同じピンでいっしょに使っています。2つは I2C アドレスが同じ(0x29)なので同時に読めません。どちらか1つにするか、「つなぐ · SDA・SCL ピン」ブロックで別のピンにつないでください。',
  'cat.espsens': 'ESP32 センサー・画面',
- 'tb.esdist': 'レーザー距離 (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': '距離 (レーザー TOF050C · TOF200C · TOF400C · VL53L0X · 超音波 HC-SR04)',
  'tb.escolor': 'カラーセンサー (TCS34725)',
  'tb.esvoice': '音声認識 (DFRobot DF2301Q)',
  'tb.esoled': 'OLED 画面 (SSD1306)',
@@ -170,7 +170,7 @@ TEXT = {
  'es.help': '▶ 运行时只显示程序使用的传感器。要查看所有已连接的传感器,请按 ▶ 检查状态。语音传感器在说出唤醒词后再说命令就会显示编号。',
  'rule.esclash': '颜色传感器和激光测距传感器在 ESP32 {0} 的同一对引脚上一起使用。两者 I2C 地址相同(0x29),无法同时读取。请只用一个,或用「连接 · SDA/SCL 引脚」积木接到其他引脚。',
  'cat.espsens': 'ESP32 传感器·屏幕',
- 'tb.esdist': '激光测距 (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': '测距 (激光 TOF050C · TOF200C · TOF400C · VL53L0X · 超声波 HC-SR04)',
  'tb.escolor': '颜色传感器 (TCS34725)',
  'tb.esvoice': '语音识别 (DFRobot DF2301Q)',
  'tb.esoled': 'OLED 屏幕 (SSD1306)',
@@ -218,7 +218,7 @@ TEXT = {
  'es.help': '▶ 執行時只顯示程式使用的感測器。要查看所有已連接的感測器,請按 ▶ 檢查狀態。語音感測器在說出喚醒詞後再說命令就會顯示編號。',
  'rule.esclash': '顏色感測器和雷射測距感測器在 ESP32 {0} 的同一對腳位上一起使用。兩者 I2C 位址相同(0x29),無法同時讀取。請只用一個,或用「連接 · SDA/SCL 腳位」積木接到其他腳位。',
  'cat.espsens': 'ESP32 感測器·螢幕',
- 'tb.esdist': '雷射測距 (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': '測距 (雷射 TOF050C · TOF200C · TOF400C · VL53L0X · 超音波 HC-SR04)',
  'tb.escolor': '顏色感測器 (TCS34725)',
  'tb.esvoice': '語音辨識 (DFRobot DF2301Q)',
  'tb.esoled': 'OLED 螢幕 (SSD1306)',
@@ -266,7 +266,7 @@ TEXT = {
  'es.help': 'Con ▶ en marcha solo se ven los sensores que usa tu programa. Pulsa ▶ Ver estado para ver todos los conectados. Con el sensor de voz, di la palabra de activación y luego una orden para ver su número.',
  'rule.esclash': 'El sensor de color y el de distancia láser se usan en los mismos pines de la ESP32 {0}. Comparten la dirección I2C 0x29 y no se pueden leer juntos. Usa solo uno o conecta uno a otros pines con el bloque «conectar · pin SDA/SCL».',
  'cat.espsens': 'Sensores ESP32',
- 'tb.esdist': 'Distancia láser (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': 'Distancia (láser TOF050C · TOF200C · TOF400C · VL53L0X · ultrasonido HC-SR04)',
  'tb.escolor': 'Sensor de color (TCS34725)',
  'tb.esvoice': 'Reconocimiento de voz (DFRobot DF2301Q)',
  'tb.esoled': 'Pantalla OLED (SSD1306)',
@@ -314,7 +314,7 @@ TEXT = {
  'es.help': 'ระหว่าง ▶ รัน จะเห็นเฉพาะเซนเซอร์ที่โปรแกรมใช้ ถ้าจะดูเซนเซอร์ที่ต่อไว้ทั้งหมด ให้กด ▶ ตรวจสถานะ สำหรับเซนเซอร์เสียง ให้พูดคำปลุกแล้วพูดคำสั่งเพื่อดูหมายเลข',
  'rule.esclash': 'ใช้เซนเซอร์สีกับเซนเซอร์ระยะเลเซอร์บนขาเดียวกันของ ESP32 {0} ทั้งสองใช้ที่อยู่ I2C เดียวกัน (0x29) จึงอ่านพร้อมกันไม่ได้ ใช้เพียงตัวเดียว หรือต่ออีกตัวกับขาอื่นด้วยบล็อก “ต่อ · ขา SDA/SCL”',
  'cat.espsens': 'เซนเซอร์·จอ ESP32',
- 'tb.esdist': 'วัดระยะเลเซอร์ (TOF050C · TOF200C · TOF400C · VL53L0X)',
+ 'tb.esdist': 'วัดระยะ (เลเซอร์ TOF050C · TOF200C · TOF400C · VL53L0X · อัลตราโซนิก HC-SR04)',
  'tb.escolor': 'เซนเซอร์สี (TCS34725)',
  'tb.esvoice': 'จดจำเสียง (DFRobot DF2301Q)',
  'tb.esoled': 'จอ OLED (SSD1306)',
@@ -349,8 +349,8 @@ TEXT = {
 },
 }
 
-IO_LINES = {'ko': ('이 6줄', '이 10줄'), 'en': ('these 6 lines', 'these 10 lines'), 'es': ('estas 6 líneas', 'estas 10 líneas'),
-            'ja': ('この 6 行', 'この 10 行'), 'zh-CN': ('这 6 行', '这 10 行'), 'zh-TW': ('這 6 行', '這 10 行'), 'th': ('วาง 6 บรรทัด', 'วาง 10 บรรทัด')}
+IO_LINES = {'ko': ('이 6줄', '이 12줄'), 'en': ('these 6 lines', 'these 12 lines'), 'es': ('estas 6 líneas', 'estas 12 líneas'),
+            'ja': ('この 6 行', 'この 12 行'), 'zh-CN': ('这 6 行', '这 12 行'), 'zh-TW': ('這 6 行', '這 12 行'), 'th': ('วาง 6 บรรทัด', 'วาง 12 บรรทัด')}
 README_FILES = {'ko': ' (센서·화면 블록을 쓰면 rm_i2cdev.py, rm_vl53.py 도)', 'en': ' (plus rm_i2cdev.py and rm_vl53.py for sensor blocks)',
                 'ja': '(センサー・画面ブロックを使うなら rm_i2cdev.py、rm_vl53.py も)', 'zh-CN': '(使用传感器·屏幕积木时还有 rm_i2cdev.py、rm_vl53.py)',
                 'zh-TW': '(使用感測器·螢幕積木時還有 rm_i2cdev.py、rm_vl53.py)', 'es': ' (y rm_i2cdev.py, rm_vl53.py para los bloques de sensores)',
@@ -379,3 +379,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # 위 KEYS_RE 가 b.rm_es_* 를 모두 지우므로 추가 센서 글도 다시 넣습니다
+    import espsens2_text
+    espsens2_text.main()

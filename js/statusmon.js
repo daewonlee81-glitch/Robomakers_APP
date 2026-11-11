@@ -3,7 +3,7 @@
 // 허브에서 rm_status.run() 이 0.25초마다 보내는 「@ST:...」 줄을 읽어 표로 보여 줍니다.
 // 지금 프로그램(파이썬 코드)이 포트마다 무엇을 쓰는지도 읽어서, 실제 연결과 다르면 ⚠ 로 알려 줍니다.
 
-import { t } from './i18n.js?v=0.3.19';
+import { t } from './i18n.js?v=0.3.20';
 
 const ICON = { m: '⚙️', c: '🎨', u: '📏', f: '✋', g: '🧭', t: '👆', i: '📡', d: '❔', e: '📡', '-': '⬜' };
 
@@ -177,6 +177,29 @@ export function esColorName(r, g, b, c) {
   return 'BLUE';
 }
 
+// "@ES2:포트,초음파mm,DHT온도×10,DHT습도×10,기울기X×10,기울기Y×10,회전Z,lux,가속Z×100,
+//        BME온도×10,BME습도×10,기압×10,가속X×100,가속Y×100,예비,준비 비트,오류 비트"  (비트 = 1<<(종류−6))
+const f1 = (x) => (x / 10).toFixed(1);
+const f2 = (x) => (x / 100).toFixed(2);
+function espRows2(v) {
+  if (!v) return [];
+  const [us, dt, dh, tx, ty, gz, lux, az, bt, bh, bp, ax, ay, , ok] = v;
+  const on = (kind) => ok & (1 << (kind - 6));
+  const row = (icon, name, big, small = '', pct = null) => `<div class="es-row"><b>${icon} ${name}</b><span class="es-big">${big}</span>${
+    pct === null ? '' : `<div class="es-bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`}${small ? `<small>${small}</small>` : ''}</div>`;
+  const out = [];
+  if (on(6)) out.push(row('📡', t('es.us'), us >= 4000 ? t('st.v.far') : f1(us / 10) + ' cm', 'HC-SR04', us / 40));
+  if (on(7)) out.push(row('🌡', t('es.dht'), `${f1(dt)} °C`, `${t('es.hum')} ${f1(dh)} %`));
+  if (on(11)) {
+    const alt = 44330 * (1 - Math.pow(bp / 10 / 1013.25, 0.1903));
+    out.push(row('🌤', t('es.envt'), `${f1(bt)} °C · ${f1(bp)} hPa`, `${t('es.hum')} ${f1(bh)} % · ${t('es.alt')} ${bp > 0 ? Math.round(alt) : '-'} m`));
+  }
+  if (on(10)) out.push(row('💡', t('es.lux'), `${lux} lux`, 'BH1750', (Math.log10(Math.max(lux, 1)) / 4.5) * 100));
+  if (on(9)) out.push(row('🧭', t('es.tilt'), `X ${f1(tx)}° · Y ${f1(ty)}°`,
+    `${t('es.gyro')} Z ${gz} °/s · ${t('es.acc')} ${f2(ax)} / ${f2(ay)} / ${f2(az)} g`));
+  return out;
+}
+
 export class EspMonitor {
   constructor(root) {
     this.root = root;
@@ -185,6 +208,17 @@ export class EspMonitor {
   }
 
   line(s) {
+    const m2 = /^@ES2:([A-F]),([-\d,]+)\s*$/.exec(s);
+    if (m2) {
+      const v = m2[2].split(',').map(Number);
+      if (v.length >= 16) {
+        const p = (this.ports[m2[1]] ||= { voice: null, seq: null, v: [0, 0, 0, 0, 0, 0, 0], t: performance.now() });
+        p.v2 = v;
+        p.t2 = performance.now();
+        this.dirty = true;
+      }
+      return true;
+    }
     const m = /^@ES:([A-F]),([-\d,]+)\s*$/.exec(s);
     if (!m) return false;
     const v = m[2].split(',').map(Number);
@@ -236,6 +270,7 @@ export class EspMonitor {
       } else if (err(2)) rows.push(`<div class="es-row es-no">🎙 ${t('es.missing', t('es.voice'))}</div>`);
       if (on(1)) rows.push(`<div class="es-row"><b>🖥 OLED</b><span>${t('es.oledOk')}</span></div>`);
       else if (err(1)) rows.push(`<div class="es-row es-no">🖥 ${t('es.missing', 'OLED')}</div>`);
+      rows.push(...espRows2(this.ports[k].v2));
       return `<div class="st-card es-card ${stale ? 'es-stale' : ''}"><div class="st-h">📡 ${t('es.title', k)}</div>
         ${rows.join('') || `<div class="es-row es-no">${t('es.empty')}</div>`}</div>`;
     }).join('') + `<div class="note">${t('es.help')}</div>`;

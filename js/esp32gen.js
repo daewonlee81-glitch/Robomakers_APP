@@ -1,7 +1,7 @@
 // esp32gen.js — 허브 프로그램의 「ESP32 채널/명령 등록」 블록에 맞는 LMS-ESP32 쪽 main.py 를 만듭니다.
 // 허브 쪽 PUPRemoteHub 는 모드 순서·이름·크기를 ESP32 쪽과 비교하므로, 같은 순서로 등록해 주는 것이 중요합니다.
-import { t } from './i18n.js?v=0.3.19';
-import { APP } from './config.js?v=0.3.19';
+import { t } from './i18n.js?v=0.3.20';
+import { APP } from './config.js?v=0.3.20';
 
 const RE = /\besp32_([A-F])\.add_(channel|command)\('((?:[^'\\]|\\.)*)', '((?:[^'\\]|\\.)*)'(?:, '((?:[^'\\]|\\.)*)')?\)/g;
 
@@ -36,7 +36,9 @@ export function esp32IoPorts(code) {
 // 허브 rm_esp32.IO_CMDS 와 같은 순서·형식
 const IO_CMDS = [['pmode', '', 'BB'], ['inp', '8H', ''], ['dout', '', 'BB'], ['pwm', '', 'BB'], ['servo', '', 'BB'], ['npx', '', '6B'],
   // I2C 센서·화면 (OLED · 음성 인식 · 컬러 · 레이저 거리) — 허브는 이 명령이 있을 때만 씀
-  ['sinit', '', 'BBB'], ['sget', '7H', ''], ['sset', '', 'BBB'], ['otxt', '', 'BB14s']];
+  ['sinit', '', 'BBB'], ['sget', '7H', ''], ['sset', '', 'BBB'], ['otxt', '', 'BB14s'],
+  // 추가 센서 (초음파 · DHT · MPU6050 · BH1750 · BME280)
+  ['sget2', '8h', ''], ['sget3', '8h', '']];
 
 /** 파이썬 코드에서 포트별 등록 목록을 뽑습니다. → { A: [{kind, name, a, b}], ... } */
 export function esp32Modes(code) {

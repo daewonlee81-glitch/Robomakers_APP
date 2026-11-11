@@ -49,9 +49,11 @@
     rm_ai_color_is: 'color', rm_ai_color_value: 'color', rm_ai_lcolor_seen: 'color', rm_ai_lcolor_value: 'color',
   };
   const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc',
-    'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof'];
+    'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof',
+    'rm_es_us', 'rm_es_dht', 'rm_es_imu', 'rm_es_lux', 'rm_es_env', 'rm_es_ain', 'rm_es_din'];
   // ESP32 I2C 센서 블록의 시뮬레이터 값 (센서가 없으므로: 레이저 거리는 「아무것도 없음」 = 2000)
-  const ES_SIM = { rm_es_tof: 2000, rm_es_color: 0, rm_es_color_is: false, rm_es_voice_id: 0, rm_es_voice_is: false };
+  const ES_SIM = { rm_es_tof: 2000, rm_es_color: 0, rm_es_color_is: false, rm_es_voice_id: 0, rm_es_voice_is: false,
+    rm_es_us: 400, rm_es_dht: 0, rm_es_imu: 0, rm_es_lux: 0, rm_es_env: 0, rm_es_ain: 0, rm_es_din: false };
   const COL = { ai: '#00A88F', esp: '#3D7A3A', motor: '#0090F5' };
 
   // ───────────── 블록 정의 (에디터와 같은 이름 · 같은 필드) ─────────────
@@ -123,7 +125,7 @@
   def('rm_eio_np_fill', COL.esp, [dd('PORT', ports), ...RGB], 'stmt');
   def('rm_eio_np_fillc', COL.esp, [dd('PORT', ports), dd('COLOR', npColors)], 'stmt');
   // ESP32 I2C 센서·화면
-  def('rm_es_setup', COL.esp, [dd('PORT', ports), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4'])), num('SDA'), num('SCL')], 'stmt');
+  def('rm_es_setup', COL.esp, [dd('PORT', ports), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4', '9', '10', '11'])), num('SDA'), num('SCL')], 'stmt');
   def('rm_es_oled_clear', COL.esp, [dd('PORT', ports)], 'stmt');
   def('rm_es_oled_text', COL.esp, [dd('PORT', ports), num('ROW'), { type: 'input_value', name: 'TEXT' }, dd('SIZE', () => opts('essize', ['1', '2', '3']))], 'stmt');
   def('rm_es_voice_id', COL.esp, [dd('PORT', ports)], 'num');
@@ -132,6 +134,13 @@
   def('rm_es_color', COL.esp, [dd('PORT', ports), dd('WHAT', () => opts('escolor', ['0', '1', '2', '3']))], 'num');
   def('rm_es_color_is', COL.esp, [dd('PORT', ports), dd('COLOR', () => opts('color', ['RED', 'YELLOW', 'GREEN', 'BLUE', 'WHITE', 'BLACK', 'NONE']))], 'bool');
   def('rm_es_tof', COL.esp, [dd('PORT', ports)], 'num');
+  def('rm_es_us', COL.esp, [dd('PORT', ports), num('TRIG'), num('ECHO')], 'num');
+  def('rm_es_dht', COL.esp, [dd('PORT', ports), dd('KIND', () => [['DHT11', '7'], ['DHT22', '8']]), num('PIN'), dd('WHAT', () => opts('esdht', ['0', '1']))], 'num');
+  def('rm_es_imu', COL.esp, [dd('PORT', ports), dd('WHAT', () => opts('esimu', ['0', '1', '2', '3', '4', '5']))], 'num');
+  def('rm_es_lux', COL.esp, [dd('PORT', ports)], 'num');
+  def('rm_es_env', COL.esp, [dd('PORT', ports), dd('WHAT', () => opts('esenv', ['0', '1', '2', '3']))], 'num');
+  def('rm_es_ain', COL.esp, [dd('PORT', ports), num('PIN'), dd('KIND', () => opts('esain', ['light', 'soil', 'pot', 'gas', 'sound', 'other']))], 'num');
+  def('rm_es_din', COL.esp, [dd('PORT', ports), num('PIN'), dd('KIND', () => opts('esdin', ['0', '1', '2', '3', '4']))], 'bool');
 
   // ───────────── 파이썬 (실제 허브로 보낼 코드 — 에디터와 같은 결과) ─────────────
   const PY = window.python?.pythonGenerator;
@@ -192,6 +201,13 @@
     g.rm_es_color = (b) => [`${P(b)}.color_rgb(${b.getFieldValue('WHAT')})`, F];
     g.rm_es_color_is = (b) => [`${P(b)}.color_is('${b.getFieldValue('COLOR')}')`, F];
     g.rm_es_tof = (b) => [`${P(b)}.tof_mm()`, F];
+    g.rm_es_us = (b) => [`${P(b)}.ultrasonic_cm(${pv(b, 'TRIG', '13')}, ${pv(b, 'ECHO', '14')})`, F];
+    g.rm_es_dht = (b) => [`${P(b)}.dht(${b.getFieldValue('KIND')}, ${pv(b, 'PIN', '15')}, ${b.getFieldValue('WHAT')})`, F];
+    g.rm_es_imu = (b) => [`${P(b)}.imu(${b.getFieldValue('WHAT')})`, F];
+    g.rm_es_lux = (b) => [`${P(b)}.lux()`, F];
+    g.rm_es_env = (b) => [`${P(b)}.env(${b.getFieldValue('WHAT')})`, F];
+    g.rm_es_ain = (b) => [`${P(b)}.analog_pct(${pv(b, 'PIN', '34')})`, F];
+    g.rm_es_din = (b) => [`${P(b)}.detect(${pv(b, 'PIN', '4')}, ${b.getFieldValue('KIND')})`, F];
   }
 
   // ───────────── 시뮬레이터 (자바스크립트) ─────────────
@@ -304,7 +320,10 @@
         }
         if (hub?.lpf2 && items.some((x) => x.type === 'rm_eio_dout') && !items.some((x) => x.type === 'rm_es_tof')) {
           items.push(
-            label(t('tb.esdist')), blk('rm_es_tof'),
+            label(t('tb.esdist')), blk('rm_es_tof'), blk('rm_es_us', { TRIG: n(13), ECHO: n(14) }),
+            label(t('tb.esenvh')), blk('rm_es_dht', { PIN: n(15) }), blk('rm_es_env'), blk('rm_es_lux'),
+            label(t('tb.esimu')), blk('rm_es_imu'),
+            label(t('tb.espin')), blk('rm_es_ain', { PIN: n(34) }), blk('rm_es_din', { PIN: n(4) }),
             label(t('tb.escolor')), blk('rm_es_color'), blk('rm_es_color_is'),
             label(t('tb.esvoice')), blk('rm_es_voice_is', { N: n(22) }), blk('rm_es_voice_id'), blk('rm_es_voice_set', { VAL: n(5) }),
             label(t('tb.esoled')), blk('rm_es_oled_text', { ROW: n(1), TEXT: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } }), blk('rm_es_oled_clear'),

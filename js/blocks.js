@@ -1,10 +1,10 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.19';
-import { t, cocoLabel } from './i18n.js?v=0.3.19';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.19';
-import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.19';
+import { hub } from './hubs.js?v=0.3.20';
+import { t, cocoLabel } from './i18n.js?v=0.3.20';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.20';
+import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.20';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -542,7 +542,8 @@ const RGB = [num('R'), num('G'), num('B')];
 const NP_COLORS = { RED: [60, 0, 0], ORANGE: [60, 20, 0], YELLOW: [50, 40, 0], GREEN: [0, 60, 0], CYAN: [0, 45, 45], BLUE: [0, 0, 60], VIOLET: [30, 0, 60], MAGENTA: [60, 0, 35], WHITE: [40, 40, 40], BLACK: [0, 0, 0] };
 const npColors = () => Object.keys(NP_COLORS).map((k) => [t('o.color.' + (k === 'BLACK' ? 'OFF' : k)), k]);
 export const ESP_IO_BLOCKS = ['rm_eio_dout', 'rm_eio_din', 'rm_eio_ain', 'rm_eio_pwm', 'rm_eio_servo', 'rm_eio_np_init', 'rm_eio_np_set', 'rm_eio_np_setc', 'rm_eio_np_fill', 'rm_eio_np_fillc',
-  'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof'];
+  'rm_es_setup', 'rm_es_oled_clear', 'rm_es_oled_text', 'rm_es_voice_id', 'rm_es_voice_is', 'rm_es_voice_set', 'rm_es_color', 'rm_es_color_is', 'rm_es_tof',
+  'rm_es_us', 'rm_es_dht', 'rm_es_imu', 'rm_es_lux', 'rm_es_env', 'rm_es_ain', 'rm_es_din'];
 const pinOf = (b) => val(b, 'PIN', O.NONE, '0');
 def('rm_eio_dout', C.esp, null, [dd('PORT', lpfPorts), pinIn, dd('ON', () => opts('onoff', ['1', '0']))], 'stmt');
 G.forBlock['rm_eio_dout'] = (b) => `${esp(b.getFieldValue('PORT'))}.digital_write(${pinOf(b)}, ${b.getFieldValue('ON') === '1' ? 'True' : 'False'})\n`;
@@ -567,7 +568,7 @@ G.forBlock['rm_eio_np_fillc'] = (b) => `${esp(b.getFieldValue('PORT'))}.neopixel
 
 // ── ESP32 I2C 센서·화면 (OLED · 음성 인식 · 컬러 · 레이저 거리) — ESP32 쪽 rm_i2cdev.py · rm_vl53.py ──
 const espPort = (b) => esp(b.getFieldValue('PORT'));
-def('rm_es_setup', C.esp, null, [dd('PORT', lpfPorts), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4'])), num('SDA'), num('SCL')], 'stmt');
+def('rm_es_setup', C.esp, null, [dd('PORT', lpfPorts), dd('KIND', () => opts('eskind', ['1', '5', '2', '3', '4', '9', '10', '11'])), num('SDA'), num('SCL')], 'stmt');
 G.forBlock['rm_es_setup'] = (b) => `${espPort(b)}.sensor_setup(${b.getFieldValue('KIND')}, ${val(b, 'SDA', O.NONE, '255')}, ${val(b, 'SCL', O.NONE, '255')})\n`;
 def('rm_es_oled_clear', C.esp, null, [dd('PORT', lpfPorts)], 'stmt');
 G.forBlock['rm_es_oled_clear'] = (b) => `${espPort(b)}.oled_clear()\n`;
@@ -585,6 +586,21 @@ def('rm_es_color_is', C.esp, null, [dd('PORT', lpfPorts), dd('COLOR', () => ['RE
 G.forBlock['rm_es_color_is'] = (b) => [`${espPort(b)}.color_is(${str(b.getFieldValue('COLOR'))})`, O.FUNCTION_CALL];
 def('rm_es_tof', C.esp, null, [dd('PORT', lpfPorts)], 'num');
 G.forBlock['rm_es_tof'] = (b) => [`${espPort(b)}.tof_mm()`, O.FUNCTION_CALL];
+// 추가 센서
+def('rm_es_us', C.esp, null, [dd('PORT', lpfPorts), num('TRIG'), num('ECHO')], 'num');
+G.forBlock['rm_es_us'] = (b) => [`${espPort(b)}.ultrasonic_cm(${val(b, 'TRIG', O.NONE, '13')}, ${val(b, 'ECHO', O.NONE, '14')})`, O.FUNCTION_CALL];
+def('rm_es_dht', C.esp, null, [dd('PORT', lpfPorts), dd('KIND', () => [['DHT11', '7'], ['DHT22', '8']]), num('PIN'), dd('WHAT', () => opts('esdht', ['0', '1']))], 'num');
+G.forBlock['rm_es_dht'] = (b) => [`${espPort(b)}.dht(${b.getFieldValue('KIND')}, ${val(b, 'PIN', O.NONE, '15')}, ${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
+def('rm_es_imu', C.esp, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('esimu', ['0', '1', '2', '3', '4', '5']))], 'num');
+G.forBlock['rm_es_imu'] = (b) => [`${espPort(b)}.imu(${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
+def('rm_es_lux', C.esp, null, [dd('PORT', lpfPorts)], 'num');
+G.forBlock['rm_es_lux'] = (b) => [`${espPort(b)}.lux()`, O.FUNCTION_CALL];
+def('rm_es_env', C.esp, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('esenv', ['0', '1', '2', '3']))], 'num');
+G.forBlock['rm_es_env'] = (b) => [`${espPort(b)}.env(${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
+def('rm_es_ain', C.esp, null, [dd('PORT', lpfPorts), num('PIN'), dd('KIND', () => opts('esain', ['light', 'soil', 'pot', 'gas', 'sound', 'other']))], 'num');
+G.forBlock['rm_es_ain'] = (b) => [`${espPort(b)}.analog_pct(${val(b, 'PIN', O.NONE, '34')})`, O.FUNCTION_CALL];
+def('rm_es_din', C.esp, null, [dd('PORT', lpfPorts), num('PIN'), dd('KIND', () => opts('esdin', ['0', '1', '2', '3', '4']))], 'bool');
+G.forBlock['rm_es_din'] = (b) => [`${espPort(b)}.detect(${val(b, 'PIN', O.NONE, '4')}, ${b.getFieldValue('KIND')})`, O.FUNCTION_CALL];
 
 // ════════════════════════ 코드 생성 ════════════════════════
 

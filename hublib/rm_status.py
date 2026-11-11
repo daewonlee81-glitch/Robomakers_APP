@@ -31,10 +31,14 @@ def _pup_probe(port):
         try:
             m = d.info()["modes"]
             if len(m) > 6 and m[0][0].rstrip() == "pmode" and m[6][0].rstrip() == "sinit":
-                from rm_esp32 import ESP32, S_OLED, S_VOICE, S_COLOR, S_TOF
+                from rm_esp32 import ESP32, S_OLED, S_VOICE, S_COLOR, S_TOF, S_IMU, S_LUX, S_ENV
                 e = ESP32(port, io=True)
                 for k in (S_TOF, S_COLOR, S_VOICE, S_OLED):
                     e.sensor_setup(k, wait_ready=False)
+                if e._sens2:
+                    # I2C 로 찾을 수 있는 추가 센서 (초음파·DHT 는 핀을 알아야 해서 프로그램에서 켭니다)
+                    for k in (S_IMU, S_LUX, S_ENV):
+                        e.sensor_setup(k, wait_ready=False)
                 return ["e", e]
         except Exception as ex:
             print("ESP32?", ex)
@@ -89,6 +93,8 @@ def _read(kind, dev):
         return dev, 0
     if kind == "e":
         v = dev._sget(True)
+        if dev._sens2:
+            dev._sget2(True)
         dev.monitor(True)
         return v[4], v[6]
     return 0, 0

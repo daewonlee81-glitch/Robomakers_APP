@@ -48,6 +48,10 @@ SENS_CMDS = (
     ("otxt", "", "BB14s"),  # OLED 글자 (줄|크기-1<<4, 칸, 글자)
 )
 S_OLED, S_VOICE, S_COLOR, S_TOF, S_OLED32 = 1, 2, 3, 4, 5
+# 추가 센서 (ESP32 쪽에 sget2 명령이 있을 때만)
+SENS2_CMDS = (("sget2", "8h", ""), ("sget3", "8h", ""))
+S_SONAR, S_DHT11, S_DHT22, S_IMU, S_LUX, S_ENV = 6, 7, 8, 9, 10, 11
+_S2_NAME = ("ultrasonic sensor", "DHT sensor", "DHT sensor", "MPU6050", "BH1750", "BME280")
 _TOF_CHIP = ("?", "VL6180X", "VL53L0X", "VL53L1X")
 _S_NAME = ("", "OLED", "voice sensor", "color sensor", "laser distance sensor", "OLED")
 
@@ -59,6 +63,11 @@ class ESP32:
         self._last = {}
         self._io = io
         self._sens = False
+        self._sens2 = False
+        self._sarg = {}
+        self._v2 = (4000, 0, 0, 0, 0, 0, 0, 0)
+        self._v3 = (0,) * 8
+        self._t2 = -1000
         self._son = {}
         self._sv = (0,) * 7
         self._st = -1000
@@ -81,6 +90,11 @@ class ESP32:
             if self._sens:
                 for name, to_hub, from_hub in SENS_CMDS:
                     self.pr.add_command(name, to_hub_fmt=to_hub, from_hub_fmt=from_hub)
+                n += len(SENS_CMDS)
+                self._sens2 = len(modes) > n and modes[n][0].rstrip() == "sget2"
+                if self._sens2:
+                    for name, to_hub, from_hub in SENS2_CMDS:
+                        self.pr.add_command(name, to_hub_fmt=to_hub, from_hub_fmt=from_hub)
 
     # ---------- I/O 핀 ----------
     def _set_mode(self, pin, mode):
@@ -151,13 +165,28 @@ class ESP32:
         if not self._io or not self._sens:
             print("ESP32 main.py is old: download the ESP32 files again for sensor blocks")
             raise OSError("ESP32 main.py has no sensor commands")
-        slot = S_OLED if kind == S_OLED32 else kind
+        slot = S_OLED if kind == S_OLED32 else S_DHT11 if kind == S_DHT22 else kind
+        if kind >= S_SONAR and not self._sens2:
+            print("ESP32 main.py is old: download the ESP32 files again for this sensor")
+            raise OSError("ESP32 main.py has no sget2 command")
         self.pr.call("sinit", kind, sda & 255, scl & 255)
         self._son[slot] = 0
         if not wait_ready:
             return
-        bit, err = 1 << slot, 1 << (slot + 11)
         sw = StopWatch()
+        if slot >= S_SONAR:
+            bit = 1 << (slot - 6)
+            while sw.time() < 3000:
+                v3 = self._sget2(True)[1]
+                if v3[6] & bit:
+                    self._son[slot] = 1
+                    return
+                if v3[7] & bit:
+                    break
+                wait(20)
+            print("ESP32: no", _S2_NAME[slot - 6], "- check wiring and pins")
+            raise OSError("ESP32 sensor not found")
+        bit, err = 1 << slot, 1 << (slot + 11)
         while sw.time() < 3000:
             st = self._sget(True)[6]
             if st & bit:
@@ -192,12 +221,84 @@ class ESP32:
                 self._vev_t = t
         return self._sv
 
+    def _sget2(self, fresh=False):
+        t = self._sw.time()
+        if fresh or t - self._t2 >= 15:
+            self._v2 = self.pr.call("sget2")
+            self._v3 = self.pr.call("sget3")
+            self._t2 = t
+            self.monitor()
+        return self._v2, self._v3
+
+    def _need2(self, kind, a=255, b=255):
+        # 같은 자리에 다른 핀·종류(DHT11 ↔ DHT22)를 쓰면 다시 켭니다
+        slot = S_DHT11 if kind == S_DHT22 else kind
+        if slot in self._son and (a == 255 or self._sarg.get(slot) == (kind, a, b)):
+            return  # I2C 센서(핀 255)는 「센서 켜기」 블록에서 정한 핀을 그대로 씁니다
+        self._sarg[slot] = (kind, a, b)
+        self.sensor_setup(kind, a, b)
+
+    # 초음파 HC-SR04
+    def ultrasonic_cm(self, trig, echo):
+        """거리 cm (재지 못하면 400). 에코 핀은 5V 이므로 분압 저항 또는 3.3V 용(HC-SR04P)을 쓰세요."""
+        self._need2(S_SONAR, int(trig), int(echo))
+        return self._sget2()[0][0] / 10
+
+    # DHT11 / DHT22
+    def dht(self, kind, pin, what):
+        """what 0 온도 °C · 1 습도 % (2초마다 새 값)"""
+        self._need2(int(kind), int(pin), 0)
+        return self._sget2()[0][1 + int(what)] / 10
+
+    # MPU6050
+    def imu(self, what):
+        """what 0 기울기 X° · 1 기울기 Y° · 2 회전 속도 Z °/s · 3 가속도 X g · 4 가속도 Y g · 5 가속도 Z g"""
+        self._need2(S_IMU)
+        v2, v3 = self._sget2()
+        w = int(what)
+        if w == 0:
+            return v2[3] / 10
+        if w == 1:
+            return v2[4] / 10
+        if w == 2:
+            return v2[5]
+        return (v3[3], v3[4], v2[7])[w - 3] / 100
+
+    # BH1750
+    def lux(self):
+        self._need2(S_LUX)
+        return self._sget2()[0][6]
+
+    # BME280
+    def env(self, what):
+        """what 0 온도 °C · 1 습도 % · 2 기압 hPa · 3 고도 m (해수면 1013.25 hPa 기준)"""
+        self._need2(S_ENV)
+        v3 = self._sget2()[1]
+        w = int(what)
+        if w == 3:
+            p = v3[2] / 10
+            return round(44330 * (1 - (p / 1013.25) ** 0.1903), 1) if p > 0 else 0
+        return v3[w] / 10
+
+    # 아날로그·디지털 센서 (기존 핀 블록에 이름만 붙인 것)
+    def analog_pct(self, pin):
+        return round(self.analog_read(pin) * 100 / 4095)
+
+    def detect(self, pin, kind):
+        """kind 0 인체 감지(PIR) · 1 터치 · 2 버튼(누르면 GND) · 3 기울기 스위치 · 4 빛 감지(어두우면 1) → 감지되면 True"""
+        k = int(kind)
+        if k in (2, 3):
+            return not self.digital_read(pin, IN_UP)
+        return self.digital_read(pin, IN)
+
     def monitor(self, force=False):
         """웹 에디터 「상태」 탭이 열려 있으면(stdin 'E' 프레임) 0.2초마다 "@ES:포트,빨강,초록,파랑,밝기,거리,음성,상태" 출력"""
         t = self._sw.time()
         if t - self._mon >= 200 and (force or rm_link.fresh("E")):
             self._mon = t
             print("@ES:%s,%d,%d,%d,%d,%d,%d,%d" % ((self._pn,) + tuple(self._sv)))
+            if self._sens2 and self._v3[6]:
+                print("@ES2:%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d" % ((self._pn,) + tuple(self._v2) + tuple(self._v3)))
 
     # OLED
     def oled_clear(self):

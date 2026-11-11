@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.19';
+import { t } from './i18n.js?v=0.3.20';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -319,6 +319,46 @@ EXAMPLES.escolor = {
           [is('BLUE'), [B('rm_light', { COLOR: 'BLUE' }), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('BLUE') })]],
         ], [B('rm_light_off'), B('rm_es_oled_text', { PORT: 'A', SIZE: '2' }, { ROW: N(5), TEXT: T('-') })]),
         B('rm_wait', {}, { SEC: N(0.1) }),
+      ]),
+    ]));
+  },
+};
+EXAMPLES.esus = {
+  title: () => t('ex.esus'),
+  hubs: ['prime'],
+  build: () => {
+    const us = () => B('rm_es_us', { PORT: 'D' }, { TRIG: N(13), ECHO: N(14) });
+    return ws(start([
+      esDrive(),
+      B('rm_es_oled_clear', { PORT: 'D' }),
+      B('rm_es_oled_text', { PORT: 'D', SIZE: '1' }, { ROW: N(1), TEXT: T('cm') }),
+      { type: 'controls_whileUntil', fields: { MODE: 'UNTIL' }, inputs: {
+        BOOL: V(esCmp('LT', us(), esN(15))),
+        DO: DO([
+          B('rm_es_oled_text', { PORT: 'D', SIZE: '3' }, { ROW: N(3), TEXT: V(us()) }),
+          B('rm_drive_drive', {}, { SPEED: N(150), TURN: N(0) }),
+          B('rm_wait', {}, { SEC: N(0.06) }),
+        ]) } },
+      B('rm_drive_stop'),
+      B('rm_es_oled_text', { PORT: 'D', SIZE: '3' }, { ROW: N(3), TEXT: T('STOP') }),
+    ]));
+  },
+};
+EXAMPLES.esenv = {
+  title: () => t('ex.esenv'),
+  hubs: ['prime', 'essential'],
+  build: () => {
+    const env = (w) => B('rm_es_env', { PORT: 'A', WHAT: w });
+    const line = (row, label, w, unit) => B('rm_es_oled_text', { PORT: 'A', SIZE: '1' }, { ROW: N(row), TEXT: V({ type: 'text_join', extraState: { itemCount: 3 },
+      inputs: { ADD0: T(label), ADD1: V(env(w)), ADD2: T(unit) } }) });
+    return ws(start([
+      B('rm_es_oled_clear', { PORT: 'A' }),
+      forever([
+        line(1, 'T ', '0', ' C'),
+        line(2, 'H ', '1', ' %'),
+        line(3, 'P ', '2', ' hPa'),
+        line(4, 'A ', '3', ' m'),
+        B('rm_wait', {}, { SEC: N(1) }),
       ]),
     ]));
   },
