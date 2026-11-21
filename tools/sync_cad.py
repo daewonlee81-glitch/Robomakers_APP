@@ -21,7 +21,7 @@ LIBS = ['rm_aicam', 'rm_esp32', 'rm_husky', 'rm_link', 'rm_pad', 'rm_tasks', 'pu
 
 # 캐드 app.js(묶인 파일)에 직접 넣는 작은 고침 — (찾을 글, 바꿀 글). 이미 바뀌어 있으면 건너뜁니다.
 #   「시작」 블록 여러 개 동시 실행: 파이썬은 window.__wbTasks(js/tasks.js) 에 맡기고, 시뮬레이터는 시작 블록마다 따로 실행
-APP_VER = 'wb3'
+APP_VER = 't1'
 APP_PATCHES = [
     ('e.rmX_=[],e.wbHubObj();let t="",i=!1,s=new Set',
      'e.rmX_=[],e.wbHubObj();let WT=window.__wbTasks?window.__wbTasks(e,n):null,t="",i=!1,s=new Set'),
@@ -155,7 +155,8 @@ def main():
     html2 = re.sub(r'<script src="wordblock-sync\.js[^"]*"></script>', f'<script src="wordblock-sync.js?v={ver}"></script>', html)
     if 'wordblock-sync.js' not in html2:
         html2 = re.sub(r'(<script src="app\.js[^"]*"></script>)', lambda m: m.group(1) + f'\n<script src="wordblock-sync.js?v={ver}"></script>', html2, count=1)
-    html2 = re.sub(r'<script src="app\.js[^"]*"></script>', f'<script src="app.js?v={APP_VER}"></script>', html2)
+    if done:  # app.js 를 고쳤을 때만 주소 표시를 바꿈 (캐드 쪽에서 붙인 버전은 그대로 두고 뒤에 덧붙임)
+        html2 = re.sub(r'(<script src="app\.js\?v=)([^"]*)(">)', lambda m: m.group(1) + m.group(2) + '.' + APP_VER + m.group(3), html2)
     if html2 != html:
         open(idx, 'w', encoding='utf-8').write(html2)
     n = len(msgs['ko']) - 1
