@@ -1,10 +1,11 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.20';
-import { t, cocoLabel } from './i18n.js?v=0.3.20';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.20';
-import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.20';
+import { hub } from './hubs.js?v=0.3.21';
+import { t, cocoLabel } from './i18n.js?v=0.3.21';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.21';
+import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.21';
+import { beginTasks, TRACE_DEF_TASKS } from './tasks.js?v=0.3.21';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -509,8 +510,11 @@ const husky = (p) => {
 };
 def('rm_husky_detected', C.husky, null, [dd('PORT', lpfPorts), num('ID')], 'bool');
 G.forBlock['rm_husky_detected'] = (b) => [`${husky(b.getFieldValue('PORT'))}.detected(${val(b, 'ID', O.NONE, '0')})`, O.FUNCTION_CALL];
-def('rm_husky_value', C.husky, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('husky', ['id', 'x', 'y', 'width', 'offset']))], 'num');
+def('rm_husky_value', C.husky, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('husky', ['id', 'x', 'y', 'width', 'height', 'offset', 'count']))], 'num');
 G.forBlock['rm_husky_value'] = (b) => [`${husky(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
+// 여러 대상 중 ID 로 고르기 (새 브리지 펌웨어: 앞의 3개 중에서 · 없으면 -1)
+def('rm_husky_of_id', C.husky, null, [dd('PORT', lpfPorts), num('ID'), dd('WHAT', () => opts('huskyof', ['0', '1', '2', '3']))], 'num');
+G.forBlock['rm_husky_of_id'] = (b) => [`${husky(b.getFieldValue('PORT'))}.of_id(${val(b, 'ID', O.NONE, '1')}, ${b.getFieldValue('WHAT')})`, O.FUNCTION_CALL];
 def('rm_husky_line', C.husky, null, [dd('PORT', lpfPorts), dd('WHAT', () => opts('line', ['line_start_x', 'line_end_x', 'line_end_y']))], 'num');
 G.forBlock['rm_husky_line'] = (b) => [`${husky(b.getFieldValue('PORT'))}.${b.getFieldValue('WHAT')}()`, O.FUNCTION_CALL];
 
@@ -641,6 +645,8 @@ function generate_(workspace, trace, traceIds) {
   G.rmSetup_ = new Map();
   G.rmEspIo_ = new Set(workspace.getAllBlocks(false).filter((b) => ESP_IO_BLOCKS.includes(b.type) && b.isEnabled()).map((b) => b.getFieldValue('PORT')));
   hubObj();
+  // 「시작」 블록이 둘 이상이면 줄기를 동시에 실행 (js/tasks.js) — 하나면 null 이고 코드는 예전 그대로
+  const tasks = beginTasks(G, workspace, { trace });
 
   let main = '';
   let hasStart = false;
@@ -648,7 +654,8 @@ function generate_(workspace, trace, traceIds) {
     if (!block.isEnabled()) continue;
     if (block.type === 'rm_start') {
       hasStart = true;
-      main += G.blockToCode(block);
+      const code = G.blockToCode(block);
+      main += tasks ? tasks.stack(code) : code;
     } else if (block.type.startsWith('procedures_def')) {
       G.blockToCode(block);
     }
@@ -673,7 +680,7 @@ function generate_(workspace, trace, traceIds) {
   for (const [k, v] of Object.entries(G.definitions_)) {
     if (k === 'variables') varInit = v;
     else if (/^(from\s+\S+\s+)?import\s/.test(v)) lines.push(v);
-    else defs.push(v);
+    else defs.push(tasks ? tasks.def(k, v) : v);
   }
   G.definitions_ = Object.create(null);
   G.finish('');
@@ -685,17 +692,20 @@ function generate_(workspace, trace, traceIds) {
   if (trace) {
     imp('pybricks.tools', 'StopWatch');
     out = out.replace(/\n\n/, '\nfrom pybricks.tools import StopWatch\n\n');
-    out += TRACE_DEF + '\n\n';
+    out += (tasks ? TRACE_DEF_TASKS(tasks.count) : TRACE_DEF) + '\n\n';
   }
-  out += t('gen.start') + '\n' + (main.trim() ? main : 'pass\n');
+  out += t('gen.start') + '\n' + (tasks ? t('gen.tasks', tasks.count) + '\n' + tasks.main() : main.trim() ? main : 'pass\n');
   if (trace) {
-    out = out.replace(/_t\('([^']+)'\)/g, (m, id) => {
+    // 줄기 모드에서는 _t('id', 줄기번호) — 줄기마다 따로 밝힘
+    out = out.replace(/_t\('([^']+)'(?:, (\d+))?\)/g, (m, id, k) => {
       const b = workspace.getBlockById(id);
       if (!b) return '_t(0)';
       let n = traceIds.indexOf(id);
       if (n < 0) n = traceIds.push(id) - 1;
-      return TRACE_SLOW.test(b.type) ? `_t(${n}, 1)` : `_t(${n})`;
+      const slow = TRACE_SLOW.test(b.type);
+      if (tasks) return `_t(${n}, ${slow ? 1 : 0}, ${k || 0})`;
+      return slow ? `_t(${n}, 1)` : `_t(${n})`;
     });
   }
-  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart, traceIds };
+  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart, traceIds, tasks: tasks ? tasks.count : 0 };
 }

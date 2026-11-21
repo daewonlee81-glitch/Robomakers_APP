@@ -17,9 +17,26 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAD = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, '..', 'mindstorms-cad'))
 LANGS = {'ko': 'ko', 'en': 'en', 'ja': 'ja', 'zh': 'zh-CN', 'es': 'es'}
-LIBS = ['rm_aicam', 'rm_esp32', 'rm_husky', 'rm_link', 'rm_pad', 'pupremote_hub', 'bluepad']
-WANT = r'^(b\.rm_ai_(obj|teach|color|lcolor)_|b\.rm_eio_|b\.rm_es_|b\.rm_motor_pair_|tb\.es(dist|color|voice|oled|setup|envh|imu|pin)$|mp\.[a-z]+$|o\.(objv|teachv|colorv|lcolv|onoff|pull|eskind|essize|esvoice|escolor|esdht|esimu|esenv|esain|esdin)\.|o\.color\.[A-Z]+$)'
-WANT_KEYS = {'coco.any', 'teach.class', 'color.slot', 'tb.object', 'tb.teach', 'tb.color', 'tb.lcolor', 'tb.espio', 'tb.neopixel'}
+LIBS = ['rm_aicam', 'rm_esp32', 'rm_husky', 'rm_link', 'rm_pad', 'rm_tasks', 'pupremote_hub', 'bluepad']
+
+# 캐드 app.js(묶인 파일)에 직접 넣는 작은 고침 — (찾을 글, 바꿀 글). 이미 바뀌어 있으면 건너뜁니다.
+#   「시작」 블록 여러 개 동시 실행: 파이썬은 window.__wbTasks(js/tasks.js) 에 맡기고, 시뮬레이터는 시작 블록마다 따로 실행
+APP_VER = 'wb3'
+APP_PATCHES = [
+    ('e.rmX_=[],e.wbHubObj();let t="",i=!1,s=new Set',
+     'e.rmX_=[],e.wbHubObj();let WT=window.__wbTasks?window.__wbTasks(e,n):null,t="",i=!1,s=new Set'),
+    ('s.size||(t+=e.blockToCode(f))',
+     's.size||(t+=WT?WT.stack(e.blockToCode(f)):e.blockToCode(f))'),
+    ('/^(from\\s+\\S+\\s+)?import\\s/.test(m)?o.push(m):d.push(m)',
+     '/^(from\\s+\\S+\\s+)?import\\s/.test(m)?o.push(m):d.push(WT?WT.def(f,m):m)'),
+    ('u+=Ye("gen.start")+`\n`+(t.trim()?t:`pass\n`)',
+     'u+=Ye("gen.start")+`\n`+(WT?WT.main():t.trim()?t:`pass\n`)'),
+    ('r=i.map(d=>e.blockToCode(d)).join(""),o=s.map(d=>e.blockToCode(d)),a=[...e.wbPre_.values()].join(""),l=e.finish(""),c=(i.length?[a+r]:[]).concat(o);',
+     'r=i.map(d=>e.blockToCode(d)),o=s.map(d=>e.blockToCode(d)),a=[...e.wbPre_.values()].join(""),l=e.finish(""),c=r.concat(o);'),
+    ('${i.length?"":a}await Promise.all([', '${a}await Promise.all(['),
+]
+WANT = r'^(b\.rm_ai_(obj|teach|color|lcolor)_|b\.rm_eio_|b\.rm_es_|b\.rm_motor_pair_|b\.rm_husky_|tb\.es(dist|color|voice|oled|setup|envh|imu|pin)$|mp\.[a-z]+$|o\.(husky|huskyof|objv|teachv|colorv|lcolv|onoff|pull|eskind|essize|esvoice|escolor|esdht|esimu|esenv|esain|esdin)\.|o\.color\.[A-Z]+$)'
+WANT_KEYS = {'b.rm_start.tip', 'coco.any', 'teach.class', 'color.slot', 'tb.object', 'tb.teach', 'tb.color', 'tb.lcolor', 'tb.espio', 'tb.neopixel'}
 
 # 시뮬레이터에서는 다르게 안내할 문구
 SIM = {
@@ -114,15 +131,31 @@ def main():
     js = (tpl.replace('/*@MSGS@*/ {}', json.dumps(msgs, ensure_ascii=False))
              .replace('/*@LIBS@*/ {}', json.dumps(libs, ensure_ascii=False))
              .replace('@VERSION@', ver)
-             .replace('/*@MULTIPORT@*/', open(os.path.join(ROOT, 'js', 'multiport.js'), encoding='utf-8').read().replace('export function', 'function').replace('export const', 'const')))
+             .replace('/*@MULTIPORT@*/', open(os.path.join(ROOT, 'js', 'multiport.js'), encoding='utf-8').read().replace('export function', 'function').replace('export const', 'const'))
+             .replace('/*@TASKS@*/', open(os.path.join(ROOT, 'js', 'tasks.js'), encoding='utf-8').read().replace('export function', 'function').replace('export const', 'const')))
     out = os.path.join(CAD, 'wordblock-sync.js')
     open(out, 'w', encoding='utf-8').write(js)
+    # 캐드 app.js 고침 (한 번만 들어감)
+    app = os.path.join(CAD, 'app.js')
+    src = open(app, encoding='utf-8').read()
+    done = 0
+    for a, b in APP_PATCHES:
+        if b in src:
+            continue
+        if src.count(a) != 1:
+            sys.exit(f'app.js 고칠 곳을 찾지 못했습니다: {a[:50]}')
+        src = src.replace(a, b)
+        done += 1
+    if done:
+        open(app, 'w', encoding='utf-8').write(src)
+        print(f'app.js 고침 {done}곳')
     # 캐드 index.html 이 새 파일을 받도록 주소에 ?v=<버전> 을 붙입니다
     idx = os.path.join(CAD, 'index.html')
     html = open(idx, encoding='utf-8').read()
     html2 = re.sub(r'<script src="wordblock-sync\.js[^"]*"></script>', f'<script src="wordblock-sync.js?v={ver}"></script>', html)
     if 'wordblock-sync.js' not in html2:
         html2 = re.sub(r'(<script src="app\.js[^"]*"></script>)', lambda m: m.group(1) + f'\n<script src="wordblock-sync.js?v={ver}"></script>', html2, count=1)
+    html2 = re.sub(r'<script src="app\.js[^"]*"></script>', f'<script src="app.js?v={APP_VER}"></script>', html2)
     if html2 != html:
         open(idx, 'w', encoding='utf-8').write(html2)
     n = len(msgs['ko']) - 1

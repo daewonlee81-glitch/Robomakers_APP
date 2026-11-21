@@ -1,6 +1,6 @@
 // examples.js — 예제 프로그램 (Blockly 직렬화 형식으로 조립)
 
-import { t } from './i18n.js?v=0.3.20';
+import { t } from './i18n.js?v=0.3.21';
 
 const N = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const T = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -44,6 +44,29 @@ export const EXAMPLES = {
       B('rm_drive_straight', {}, { DIST: N(300) }),
       B('rm_beep', {}, { FREQ: N(800), SEC: N(0.3) }),
     ].filter((b) => h.speaker || b.type !== 'rm_beep'))),
+  },
+  multi: {
+    // 「시작」 블록 두 개 = 두 줄기가 동시에 실행 (js/tasks.js)
+    title: () => t('ex.multi'),
+    hubs: ['prime', 'essential', 'ev3'],
+    build: (h) => ({ blocks: { languageVersion: 0, blocks: [
+      start([
+        B('rm_drive_setup', { L: h.motorPorts[0], R: h.motorPorts[1], WD: 56, AT: 112, GYRO: false }),
+        { type: 'controls_repeat_ext', inputs: { TIMES: N(4), DO: DO([
+          B('rm_drive_straight', {}, { DIST: N(200) }),
+          B('rm_drive_turn', {}, { ANGLE: N(90) }),
+        ]) } },
+        B('rm_end'),
+      ]),
+      { ...start([
+        forever([
+          B('rm_light', { COLOR: 'RED' }),
+          B('rm_wait', {}, { SEC: N(0.3) }),
+          B('rm_light', { COLOR: 'BLUE' }),
+          B('rm_wait', {}, { SEC: N(0.3) }),
+        ]),
+      ]), x: 760 },
+    ] } }),
   },
   hand: {
     title: () => t('ex.hand'),

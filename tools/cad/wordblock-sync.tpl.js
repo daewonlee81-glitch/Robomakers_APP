@@ -54,7 +54,7 @@
   // ESP32 I2C 센서 블록의 시뮬레이터 값 (센서가 없으므로: 레이저 거리는 「아무것도 없음」 = 2000)
   const ES_SIM = { rm_es_tof: 2000, rm_es_color: 0, rm_es_color_is: false, rm_es_voice_id: 0, rm_es_voice_is: false,
     rm_es_us: 400, rm_es_dht: 0, rm_es_imu: 0, rm_es_lux: 0, rm_es_env: 0, rm_es_ain: 0, rm_es_din: false };
-  const COL = { ai: '#00A88F', esp: '#3D7A3A', motor: '#0090F5' };
+  const COL = { ai: '#00A88F', esp: '#3D7A3A', motor: '#0090F5', husky: '#E6553A' };
 
   // ───────────── 블록 정의 (에디터와 같은 이름 · 같은 필드) ─────────────
   const lsJson = (k, d) => {
@@ -107,6 +107,17 @@
   def('rm_ai_color_value', COL.ai, [dd('WHAT', () => [[t('o.colorv.id'), 'id'], [t('o.colorv.r'), '0'], [t('o.colorv.g'), '1'], [t('o.colorv.b'), '2']])], 'num');
   def('rm_ai_lcolor_seen', COL.ai, [dd('N', slotOptions)], 'bool');
   def('rm_ai_lcolor_value', COL.ai, [dd('N', slotOptions), dd('WHAT', () => [[t('o.objv.x'), '1'], [t('o.objv.y'), '2'], [t('o.lcolv.size'), '3']])], 'num');
+
+  // 허스키렌즈: 세로 · 보이는 수 · ID 로 고르기 (새 브리지 펌웨어 여러 대상 모드)
+  def('rm_husky_value', COL.husky, [dd('PORT', ports), dd('WHAT', () => opts('husky', ['id', 'x', 'y', 'width', 'height', 'offset', 'count']))], 'num');
+  {
+    // 시뮬레이터 앱이 블록을 다시 정의해도(언어 바꿀 때 등) 이 정의를 유지
+    const mine = Bly.Blocks.rm_husky_value;
+    try {
+      Object.defineProperty(Bly.Blocks, 'rm_husky_value', { configurable: true, enumerable: true, get: () => mine, set: () => {} });
+    } catch (e) { /* 무시 */ }
+  }
+  def('rm_husky_of_id', COL.husky, [dd('PORT', ports), num('ID'), dd('WHAT', () => opts('huskyof', ['0', '1', '2', '3']))], 'num');
 
   // 모터 두 개를 한 블록으로
   const mports = () => (W.hub()?.motorPorts || ['A', 'B']).map((p) => [p, p]);
@@ -168,6 +179,13 @@
     const pairGen = (G, one) => (b) => [1, 2].map((i) => G.forBlock[one](asOne(b, one === 'rm_motor_run'
       ? { PORT: 'P' + i, SPEED: 'S' + i } : { PORT: 'P' + i, DIR: 'D' + i }), G)).join('');
     window.__wbPair = pairGen;
+    g.rm_husky_of_id = (b) => {
+      const p = b.getFieldValue('PORT');
+      imp('rm_husky', 'HuskyLens');
+      imp('pybricks.parameters', 'Port');
+      PY.rmSetup_.set('husky_' + p, `husky_${p} = HuskyLens(Port.${p})`);
+      return [`husky_${p}.of_id(${pv(b, 'ID', '1')}, ${b.getFieldValue('WHAT')})`, F];
+    };
     g.rm_motor_pair_run = pairGen(PY, 'rm_motor_run');
     g.rm_motor_pair_setup = pairGen(PY, 'rm_motor_setup');
     g.rm_ai_obj_seen = (b) => [`${aicam()}.object_seen(${b.getFieldValue('OBJ')})`, F];
@@ -247,6 +265,7 @@
       g.rm_motor_pair_run = (b) => ['1', '2'].map((i) => `await api.wbRun(${JSON.stringify(b.getFieldValue('P' + i))}, ${jv(b, 'S' + i, '50')});\n`).join('');
       g.rm_motor_pair_setup = (b) => ['1', '2'].map((i) => `await api.wbMotorDir(${JSON.stringify(b.getFieldValue('P' + i))}, ${JSON.stringify(b.getFieldValue('D' + i))});\n`).join('');
     }
+    g.rm_husky_of_id = (b) => (jv(b, 'ID'), [`api.wbNoDev('husky', -1)`, F]);
     g.rm_ai_obj_seen = (b) => [`${X}.objSeen(${b.getFieldValue('OBJ')})`, F];
     g.rm_ai_obj_value = (b) => [`${X}.objValue(${b.getFieldValue('OBJ')}, ${b.getFieldValue('WHAT')})`, F];
     g.rm_ai_teach_is = (b) => [`(${X}.get('T', 0, 0) === ${b.getFieldValue('N')})`, JO.EQUALITY];
@@ -273,6 +292,13 @@
   }
 
   // ───────────── 모터 포트 여러 개 고르기 (에디터 js/multiport.js 와 같은 코드) ─────────────
+  // 「시작」 블록 여러 개 동시 실행 (에디터 js/tasks.js 그대로) — app.js 의 파이썬 생성이 window.__wbTasks 를 부릅니다
+  const beginTasks = (() => {
+    /*@TASKS@*/
+    return beginTasks;
+  })();
+  window.__wbTasks = (gen, ws) => beginTasks(gen, ws);
+
   /*@MULTIPORT@*/
   try {
     installMultiPorts(Blockly, {
@@ -300,6 +326,8 @@
           const ms = items.findIndex((x) => x.type === 'rm_motor_setup');
           items.splice(ms + 1, 0, blk('rm_motor_pair_setup', null, { P1: mp[0], P2: mp[1] }));
         }
+        const hv = items.findIndex((x) => x.type === 'rm_husky_value');
+        if (hv >= 0 && !items.some((x) => x.type === 'rm_husky_of_id')) items.splice(hv + 1, 0, blk('rm_husky_of_id', { ID: n(1) }));
         const at = items.findIndex((x) => x.type === 'rm_ai_pose_value');
         if (at >= 0 && !items.some((x) => x.type === 'rm_ai_obj_seen')) {
           items.splice(at + 1, 0,

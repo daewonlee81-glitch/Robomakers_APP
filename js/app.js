@@ -1,22 +1,22 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.20';
-import { generatePython, teachNames } from './blocks.js?v=0.3.20';
-import { buildToolbox } from './toolbox.js?v=0.3.20';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.20';
-import { makeZip } from './zip.js?v=0.3.20';
-import { initHelp } from './help.js?v=0.3.20';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.20';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.20';
-import { WebGamepad } from './gamepad.js?v=0.3.20';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.20';
-import { HuskyMonitor } from './huskymon.js?v=0.3.20';
-import { initLearn } from './learn.js?v=0.3.20';
-import { initAiGuide } from './aiguide.js?v=0.3.20';
-import { StatusMonitor, statusProgram, EspMonitor } from './statusmon.js?v=0.3.20';
-import { initTutor } from './tutor.js?v=0.3.20';
-import { initPwa } from './pwa.js?v=0.3.20';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.21';
+import { generatePython, teachNames } from './blocks.js?v=0.3.21';
+import { buildToolbox } from './toolbox.js?v=0.3.21';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.21';
+import { makeZip } from './zip.js?v=0.3.21';
+import { initHelp } from './help.js?v=0.3.21';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.21';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.21';
+import { WebGamepad } from './gamepad.js?v=0.3.21';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.21';
+import { HuskyMonitor } from './huskymon.js?v=0.3.21';
+import { initLearn } from './learn.js?v=0.3.21';
+import { initAiGuide } from './aiguide.js?v=0.3.21';
+import { StatusMonitor, statusProgram, EspMonitor } from './statusmon.js?v=0.3.21';
+import { initTutor } from './tutor.js?v=0.3.21';
+import { initPwa } from './pwa.js?v=0.3.21';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -189,7 +189,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.20');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.21');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -316,7 +316,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.20`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.21`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -372,19 +372,26 @@ hubConn.addEventListener('status', (e) => {
 let stdoutLine = '';
 // 실행 중인 블록 밝히기: 허브가 보내는 「@BK:번호」 → 그 블록 강조
 let traceIds = [];
+//   시작 블록이 여럿이면 「@BK:번호:줄기」 — 줄기마다 하나씩 따로 밝힘
 function traceLine(x) {
-  const m = /^@BK:(\d+)$/.exec(x);
+  const m = /^@BK:(\d+)(?::(\d+))?$/.exec(x);
   if (!m) return false;
   const id = traceIds[+m[1]];
-  if (id) runGlow(id);
+  if (id) runGlow(id, +(m[2] || 0));
   return true;
 }
-let runBlock = null;
-function runGlow(id) {
-  const b = id ? workspace.getBlockById(id) : null;
-  if (b === runBlock) return;
-  runBlock?.getSvgRoot()?.classList.remove('rm-run');
-  runBlock = b;
+const runBlocks = new Map(); // 줄기 번호 → 밝힌 블록
+function runGlow(id, slot = 0) {
+  if (!id) {
+    for (const b of runBlocks.values()) b?.getSvgRoot()?.classList.remove('rm-run');
+    runBlocks.clear();
+    return;
+  }
+  const b = workspace.getBlockById(id);
+  const old = runBlocks.get(slot);
+  if (b === old) return;
+  runBlocks.set(slot, b);
+  if (old && ![...runBlocks.values()].includes(old)) old.getSvgRoot()?.classList.remove('rm-run');
   b?.getSvgRoot()?.classList.add('rm-run');
 }
 let lastSent = ''; // 마지막으로 허브에 보낸 파이썬 (오류 줄 번호 → 코드 줄)

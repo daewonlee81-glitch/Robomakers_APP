@@ -1,7 +1,7 @@
 // toolbox.js — 허브에 맞는 블록 꾸러미(툴박스)
-import { HUBS } from './hubs.js?v=0.3.20';
-import { C } from './blocks.js?v=0.3.20';
-import { t } from './i18n.js?v=0.3.20';
+import { HUBS } from './hubs.js?v=0.3.21';
+import { C } from './blocks.js?v=0.3.21';
+import { t } from './i18n.js?v=0.3.21';
 
 const n = (v) => ({ shadow: { type: 'math_number', fields: { NUM: v } } });
 const txt = (v) => ({ shadow: { type: 'text', fields: { TEXT: v } } });
@@ -139,6 +139,7 @@ export function buildToolbox(hubKey) {
     cats.push(cat(t('cat.husky'), C.husky, [
       b('rm_husky_detected', { ID: n(0) }),
       b('rm_husky_value'),
+      b('rm_husky_of_id', { ID: n(1) }),
       b('rm_husky_line'),
     ]));
     cats.push(cat(t('cat.esp'), C.esp, [

@@ -1,5 +1,5 @@
 {
-"version": "0.3.20",
+"version": "0.3.21",
 "files": [
 "./",
 "index.html",
@@ -32,6 +32,7 @@
 "js/pwa.js",
 "js/pybricks.js",
 "js/statusmon.js",
+"js/tasks.js",
 "js/toolbox.js",
 "js/tutor-bench.js",
 "js/tutor.js",
@@ -44,6 +45,7 @@
 "hublib/rm_link.py",
 "hublib/rm_pad.py",
 "hublib/rm_status.py",
+"hublib/rm_tasks.py",
 "esp32/lpf2.py",
 "esp32/main.py",
 "esp32/pupremote.py",

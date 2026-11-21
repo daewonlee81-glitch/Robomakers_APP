@@ -9,9 +9,9 @@
 //  규칙 점검은 AI 없이도 항상 동작합니다 (떨어진 블록, 기다리기 없는 반복, 포트 겹침 …).
 
 /* global Blockly */
-import { t, getLang } from './i18n.js?v=0.3.20';
-import { expectedPorts } from './statusmon.js?v=0.3.20';
-import './tutor-bench.js?v=0.3.20'; // window.RMTutorBench — 모델 목록 · 비교 시험 (다른 앱과 공용)
+import { t, getLang } from './i18n.js?v=0.3.21';
+import { expectedPorts } from './statusmon.js?v=0.3.21';
+import './tutor-bench.js?v=0.3.21'; // window.RMTutorBench — 모델 목록 · 비교 시험 (다른 앱과 공용)
 
 const B = window.RMTutorBench;
 
@@ -82,6 +82,23 @@ export function ruleCheck(ws, code, ctx) {
   if (floating.length) out.push({ level: 'warn', msg: t('rule.floating', floating.length), ids: floating.map((b) => b.id) });
   if (starts.length && starts.every((s) => !s.getNextBlock())) out.push({ level: 'warn', msg: t('rule.empty'), ids: starts.map((b) => b.id) });
 
+  // 시작 블록 여러 개(동시 실행)가 같은 모터를 움직임
+  const live = starts.filter((s) => s.isEnabled() && s.getNextBlock());
+  if (live.length > 1) {
+    const used = live.map((s) => {
+      const set = new Set();
+      for (const b of s.getDescendants(false)) {
+        if (!b.isEnabled()) continue;
+        if (/^rm_motor_(run|power|run_for|target|stop)$/.test(b.type)) for (const p of String(b.getFieldValue('PORT') || '').split(',')) if (p) set.add(p);
+        if (/^rm_drive_(straight|turn|drive|stop|curve)$/.test(b.type)) set.add('drive');
+      }
+      return set;
+    });
+    const clash = new Set();
+    used.forEach((a, i) => used.slice(i + 1).forEach((b) => a.forEach((p) => b.has(p) && clash.add(p))));
+    if (clash.size) out.push({ level: 'info', msg: t('rule.tasksMotor', [...clash].map((p) => (p === 'drive' ? t('rule.tasksDrive') : p)).join(', ')), ids: live.map((b) => b.id) });
+  }
+
   // 기다리기 없는 while/until 반복
   for (const b of all) {
     if (b.type !== 'controls_whileUntil' || !b.isEnabled()) continue;
@@ -104,7 +121,7 @@ export function ruleCheck(ws, code, ctx) {
   for (const b of all) {
     if (!b.type.startsWith('rm_husky') || !b.getField('PORT')) continue;
     const p = b.getFieldValue('PORT');
-    const k = b.type === 'rm_husky_line' ? 'line' : b.type === 'rm_husky_value' ? 'block' : '';
+    const k = b.type === 'rm_husky_line' ? 'line' : b.type === 'rm_husky_value' || b.type === 'rm_husky_of_id' ? 'block' : '';
     if (k) (husky[p] = husky[p] || {})[k] = [...((husky[p] || {})[k] || []), b.id];
   }
   for (const [p, v] of Object.entries(husky)) {
