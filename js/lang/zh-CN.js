@@ -808,4 +808,5 @@ export default {
   "rule.tasksMotor": "多个开始积木在控制同一个电机({0})。同时给出不同命令时,后面的命令会覆盖前面的。",
   "rule.tasksDrive": "行驶",
   "ex.multi": "同时运行:一边走正方形一边闪灯(2 个开始积木)",
+  "vm.title": "变量",
 };

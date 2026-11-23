@@ -1,11 +1,11 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.21';
-import { t, cocoLabel } from './i18n.js?v=0.3.21';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.21';
-import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.21';
-import { beginTasks, TRACE_DEF_TASKS } from './tasks.js?v=0.3.21';
+import { hub } from './hubs.js?v=0.3.22';
+import { t, cocoLabel } from './i18n.js?v=0.3.22';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.22';
+import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.22';
+import { beginTasks, TRACE_DEF_TASKS } from './tasks.js?v=0.3.22';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -395,6 +395,13 @@ G.forBlock['rm_forever'] = (b) => {
 };
 
 def('rm_wait_until', C.control, null, [{ type: 'input_value', name: 'COND', check: 'Boolean' }], 'stmt');
+// 「변수를 ~만큼 바꾸기」: Blockly 기본 코드는 `from numbers import Number` 를 쓰는데
+// Pybricks(MicroPython)에는 numbers 모듈이 없어 허브에서 ImportError 가 납니다 → (int, float) 로 검사
+G.forBlock['math_change'] = (b) => {
+  const d = G.valueToCode(b, 'DELTA', O.ADDITIVE) || '0';
+  const v = G.getVariableName(b.getFieldValue('VAR'));
+  return `${v} = (${v} if isinstance(${v}, (int, float)) else 0) + ${d}\n`;
+};
 G.forBlock['rm_wait_until'] = (b) => `while not (${val(b, 'COND', O.NONE, 'True')}):\n${G.INDENT}${waitImp()}(10)\n`;
 
 def('rm_end', C.control, null, [], null, { previousStatement: null });
@@ -624,6 +631,26 @@ def _t(n, f=0):
             _tt = m
             print("@BK:" + str(n))`;
 
+// 변수 모니터: 값이 바뀐 변수만 「@VR:번호:값」 으로 보냄 (블록 하나 실행할 때마다 확인, 0.1초에 8줄까지)
+const WATCH_DEF = (watch) => `_vl = [None] * ${watch.length}
+_vm = 0
+_vc = 0
+def _v(f=0):
+    global _vm, _vc
+    m = _tw.time()
+    if f or m - _vm > 100:
+        _vm = m
+        _vc = 0
+    if _vc > 7:
+        return
+    i = 0
+    for x in (${watch.map((w) => w.py).join(', ')},):
+        if x != _vl[i] or type(x) != type(_vl[i]):
+            _vl[i] = x
+            _vc += 1
+            print("@VR:%d:%s" % (i, str(x)[:40]))
+        i += 1`;
+
 /**
  * 시작 블록 아래와 함수 정의만 파이썬으로 만듭니다.
  * opts.trace = true 이면 실행 중인 블록 표시용 코드를 넣고 traceIds(번호 → 블록 id)를 함께 돌려줍니다.
@@ -647,6 +674,14 @@ function generate_(workspace, trace, traceIds) {
   hubObj();
   // 「시작」 블록이 둘 이상이면 줄기를 동시에 실행 (js/tasks.js) — 하나면 null 이고 코드는 예전 그대로
   const tasks = beginTasks(G, workspace, { trace });
+  // 변수 모니터(▶ 실행 때만): 쓰이는 변수의 (보이는 이름, 파이썬 이름) — 이름표가 지워지기 전에
+  const watch = [];
+  if (trace) {
+    try {
+      for (const v of Blockly.Variables.allUsedVarModels(workspace)) watch.push({ name: v.getName ? v.getName() : v.name, py: G.getVariableName(v.getId ? v.getId() : v.id) });
+    } catch (e) { /* 변수 모니터 없이 실행 */ }
+    watch.splice(12);
+  }
 
   let main = '';
   let hasStart = false;
@@ -692,9 +727,12 @@ function generate_(workspace, trace, traceIds) {
   if (trace) {
     imp('pybricks.tools', 'StopWatch');
     out = out.replace(/\n\n/, '\nfrom pybricks.tools import StopWatch\n\n');
-    out += (tasks ? TRACE_DEF_TASKS(tasks.count) : TRACE_DEF) + '\n\n';
+    let def = tasks ? TRACE_DEF_TASKS(tasks.count) : TRACE_DEF;
+    if (watch.length) def = WATCH_DEF(watch) + '\n' + def.replace(/^(def _t\(.*\):\n)/m, '$1    _v()\n');
+    out += def + '\n\n';
   }
   out += t('gen.start') + '\n' + (tasks ? t('gen.tasks', tasks.count) + '\n' + tasks.main() : main.trim() ? main : 'pass\n');
+  if (watch.length) out += '_v(1)\n'; // 끝날 때 마지막 값
   if (trace) {
     // 줄기 모드에서는 _t('id', 줄기번호) — 줄기마다 따로 밝힘
     out = out.replace(/_t\('([^']+)'(?:, (\d+))?\)/g, (m, id, k) => {
@@ -707,5 +745,5 @@ function generate_(workspace, trace, traceIds) {
       return slow ? `_t(${n}, 1)` : `_t(${n})`;
     });
   }
-  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart, traceIds, tasks: tasks ? tasks.count : 0 };
+  return { code: out.replace(/\n{3,}/g, '\n\n'), hasStart, traceIds, tasks: tasks ? tasks.count : 0, watch: watch.map((w) => w.name) };
 }

@@ -808,4 +808,5 @@ export default {
   "rule.tasksMotor": "Varios bloques de inicio mueven el mismo motor ({0}). Si dan órdenes distintas a la vez, la última reemplaza a la anterior.",
   "rule.tasksDrive": "conducción",
   "ex.multi": "A la vez: recorrer un cuadrado mientras parpadea la luz (2 bloques de inicio)",
+  "vm.title": "Variables",
 };

@@ -186,6 +186,12 @@
       PY.rmSetup_.set('husky_' + p, `husky_${p} = HuskyLens(Port.${p})`);
       return [`husky_${p}.of_id(${pv(b, 'ID', '1')}, ${b.getFieldValue('WHAT')})`, F];
     };
+    // Pybricks 에는 numbers 모듈이 없음 (에디터 js/blocks.js 와 같게)
+    g.math_change = (b) => {
+      const d = PY.valueToCode(b, 'DELTA', 6) || '0';
+      const v = PY.getVariableName(b.getFieldValue('VAR'));
+      return `${v} = (${v} if isinstance(${v}, (int, float)) else 0) + ${d}\n`;
+    };
     g.rm_motor_pair_run = pairGen(PY, 'rm_motor_run');
     g.rm_motor_pair_setup = pairGen(PY, 'rm_motor_setup');
     g.rm_ai_obj_seen = (b) => [`${aicam()}.object_seen(${b.getFieldValue('OBJ')})`, F];

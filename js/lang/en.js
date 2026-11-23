@@ -807,4 +807,5 @@ export default {
   "rule.tasksMotor": "Several start blocks move the same motor ({0}). If they give different commands at once, the later command replaces the earlier one.",
   "rule.tasksDrive": "driving",
   "ex.multi": "At the same time: drive a square while blinking the light (2 start blocks)",
+  "vm.title": "Variables",
 };

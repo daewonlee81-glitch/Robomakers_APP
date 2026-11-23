@@ -807,4 +807,5 @@ export default {
   "rule.tasksMotor": "시작 블록 여러 개가 같은 모터({0})를 움직여요. 동시에 다른 명령을 주면 나중 명령이 앞의 것을 덮어씁니다.",
   "rule.tasksDrive": "주행",
   "ex.multi": "동시 실행: 네모로 달리면서 불빛 깜빡이기 (시작 블록 2개)",
+  "vm.title": "변수",
 };

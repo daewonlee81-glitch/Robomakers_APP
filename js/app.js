@@ -1,22 +1,22 @@
 // app.js — 로보메이커스 워드블럭 웹 에디터 메인
 /* global Blockly */
 
-import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.21';
-import { generatePython, teachNames } from './blocks.js?v=0.3.21';
-import { buildToolbox } from './toolbox.js?v=0.3.21';
-import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.21';
-import { makeZip } from './zip.js?v=0.3.21';
-import { initHelp } from './help.js?v=0.3.21';
-import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.21';
-import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.21';
-import { WebGamepad } from './gamepad.js?v=0.3.21';
-import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.21';
-import { HuskyMonitor } from './huskymon.js?v=0.3.21';
-import { initLearn } from './learn.js?v=0.3.21';
-import { initAiGuide } from './aiguide.js?v=0.3.21';
-import { StatusMonitor, statusProgram, EspMonitor } from './statusmon.js?v=0.3.21';
-import { initTutor } from './tutor.js?v=0.3.21';
-import { initPwa } from './pwa.js?v=0.3.21';
+import { HUBS, getHubKey, setHubKey, hub } from './hubs.js?v=0.3.22';
+import { generatePython, teachNames } from './blocks.js?v=0.3.22';
+import { buildToolbox } from './toolbox.js?v=0.3.22';
+import { PybricksHub, buildProgram, collectSources, CompileError } from './pybricks.js?v=0.3.22';
+import { makeZip } from './zip.js?v=0.3.22';
+import { initHelp } from './help.js?v=0.3.22';
+import { AICamera, COCO, COLOR_IDS, COLOR_CSS, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.22';
+import { LANGS, getLang, setLang, t, applyDom, cocoLabel } from './i18n.js?v=0.3.22';
+import { WebGamepad } from './gamepad.js?v=0.3.22';
+import { EXAMPLES, emptyProgram } from './examples.js?v=0.3.22';
+import { HuskyMonitor } from './huskymon.js?v=0.3.22';
+import { initLearn } from './learn.js?v=0.3.22';
+import { initAiGuide } from './aiguide.js?v=0.3.22';
+import { StatusMonitor, statusProgram, EspMonitor } from './statusmon.js?v=0.3.22';
+import { initTutor } from './tutor.js?v=0.3.22';
+import { initPwa } from './pwa.js?v=0.3.22';
 
 const $ = (s) => document.querySelector(s);
 applyDom();
@@ -189,7 +189,7 @@ const downloads = {
     download(makeZip(files), `${projectName()}.zip`);
   },
   esp32: async () => {
-    const { esp32Files } = await import('./esp32gen.js?v=0.3.21');
+    const { esp32Files } = await import('./esp32gen.js?v=0.3.22');
     download(makeZip(await esp32Files(pyNow(), `${projectName()}-esp32`)), `${projectName()}-esp32.zip`);
   },
   project: () => $('#btnSave').click(),
@@ -316,7 +316,7 @@ const libCache = {};
 async function loadLib(name) {
   if (name in libCache) return libCache[name];
   if (!/^(rm_\w+|pupremote_hub|bluepad)$/.test(name)) return (libCache[name] = null);
-  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.21`, import.meta.url));
+  const r = await fetch(new URL(`../hublib/${name}.py?v=0.3.22`, import.meta.url));
   libCache[name] = r.ok ? await r.text() : null;
   return libCache[name];
 }
@@ -380,6 +380,40 @@ function traceLine(x) {
   if (id) runGlow(id, +(m[2] || 0));
   return true;
 }
+// ── 변수 모니터: 허브가 보내는 「@VR:번호:값」 을 터미널 위 패널에 보임 (▶ 실행 때만)
+let watchNames = [];
+const watchVals = new Map();
+function watchSetup(names) {
+  watchNames = names || [];
+  watchVals.clear();
+  watchRender();
+}
+function watchLine(x) {
+  const m = /^@VR:(\d+):(.*)$/.exec(x);
+  if (!m) return false;
+  watchVals.set(+m[1], m[2]);
+  watchRender(+m[1]);
+  return true;
+}
+function watchRender(hit = -1) {
+  const el = $('#varMon');
+  if (!el) return;
+  el.hidden = !watchNames.length;
+  if (el.hidden) return;
+  if (el.children.length !== watchNames.length + 1) {
+    el.innerHTML = `<b class="vm-title">${t('vm.title')}</b>` + watchNames.map(() => '<span class="vm-item"><i></i><em></em></span>').join('');
+    [...el.querySelectorAll('.vm-item')].forEach((s, i) => (s.firstChild.textContent = watchNames[i]));
+  }
+  [...el.querySelectorAll('.vm-item')].forEach((s, i) => {
+    const v = watchVals.has(i) ? watchVals.get(i) : '–';
+    if (s.lastChild.textContent !== v) s.lastChild.textContent = v;
+    if (i === hit) {
+      s.classList.remove('vm-hit');
+      void s.offsetWidth;
+      s.classList.add('vm-hit');
+    }
+  });
+}
 const runBlocks = new Map(); // 줄기 번호 → 밝힌 블록
 function runGlow(id, slot = 0) {
   if (!id) {
@@ -409,7 +443,7 @@ hubConn.addEventListener('stdout', (e) => {
     stdoutHold = tail;
     tail = '';
   }
-  let out = lines.filter((l) => { const x = l.replace(/\r$/, ''); return !traceLine(x) && !huskyMon.line(x) && !statusMon.line(x) && !espMon.line(x); }).map((l) => l + '\n').join('') + tail;
+  let out = lines.filter((l) => { const x = l.replace(/\r$/, ''); return !traceLine(x) && !watchLine(x) && !huskyMon.line(x) && !statusMon.line(x) && !espMon.line(x); }).map((l) => l + '\n').join('') + tail;
   if (!out) return;
   termWrite(out, /Traceback|Error/.test(stdoutLine + out) ? 'err' : '');
   stdoutLine = out.split('\n').pop();
@@ -467,7 +501,8 @@ async function sendToHub(andRun, override) {
     const g = generatePython(workspace, { trace: true });
     src = g.code;
     traceIds = g.traceIds;
-  }
+    watchSetup(g.watch);
+  } else watchSetup([]);
   const bar = $('#progress');
   try {
     $('#btnRun').disabled = true;
@@ -825,7 +860,7 @@ renderColors();
 cam.modes = new Set(camModes());
 cam.onUpdate(cam);
 // 문제 확인·시험용 (브라우저 콘솔에서 rmDebug.cam 등)
-window.rmDebug = { popup, traceLine, setTrace: (ids) => (traceIds = ids), cam, hub: hubConn, workspace };
+window.rmDebug = { popup, traceLine, watchSetup, setTrace: (ids) => (traceIds = ids), cam, hub: hubConn, workspace };
 
 // ───────────────────────── 게임패드 ─────────────────────────
 const gpad = new WebGamepad();

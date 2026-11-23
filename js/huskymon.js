@@ -8,7 +8,7 @@
 // 새 브리지(mode7 HLALL)는 "@HK2:포트,종류,개수,ID,a,b,c,d,ID,a,b,c,d,..." (대상 최대 3개, 좌표는 2 단위)
 //   종류 1 블록: a,b,c,d = 중심X, 중심Y, 가로W, 세로H
 //   종류 2 화살표: a,b,c,d = 시작X, 시작Y, 끝X, 끝Y
-import { t } from './i18n.js?v=0.3.21';
+import { t } from './i18n.js?v=0.3.22';
 
 const W = 320, H = 240;
 const ID_COLORS = ['#94A3B8', '#FF5A5F', '#2E6ABF', '#22A06B', '#F5A524', '#9B5DE5', '#00B8D9', '#E1306C', '#7C8B9C'];

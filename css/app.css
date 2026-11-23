@@ -435,3 +435,12 @@ textarea.code:focus { outline: 2px solid var(--brand); }
 .es-sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); }
 .es-hit .es-big { color: #6B3FC2; animation: rmGlow .6s ease-in-out 3 alternate; }
 .es-no { color: #A15C00; }
+
+/* 변수 모니터 (터미널 위) */
+.varmon { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line, #E3E8F0); max-height: 96px; overflow: auto; }
+.varmon .vm-title { font-size: 12px; color: #6B7A96; margin-right: 2px; }
+.varmon .vm-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; border-radius: 999px; background: #FFF3E0; border: 1px solid #FFB74D; font-size: 13px; }
+.varmon .vm-item i { font-style: normal; color: #8A5A00; }
+.varmon .vm-item em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 1.2em; text-align: right; }
+.varmon .vm-hit { animation: vmhit .5s ease-out; }
+@keyframes vmhit { from { background: #FFD54F; } to { background: #FFF3E0; } }
