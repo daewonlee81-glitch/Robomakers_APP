@@ -186,6 +186,18 @@
       PY.rmSetup_.set('husky_' + p, `husky_${p} = HuskyLens(Port.${p})`);
       return [`husky_${p}.of_id(${pv(b, 'ID', '1')}, ${b.getFieldValue('WHAT')})`, F];
     };
+    // Pybricks 모듈 이름은 umath · urandom, log10 없음 (에디터 js/blocks.js 와 같게)
+    for (const k of Object.keys(g).filter((k) => /^math_/.test(k) && typeof g[k] === 'function')) {
+      const orig = g[k];
+      g[k] = function (b, gen) {
+        let r = orig.call(this, b, gen);
+        const d = PY.definitions_ || {};
+        if (d.import_math === 'import math') d.import_math = 'import umath as math';
+        if (d.import_random === 'import random') d.import_random = 'import urandom as random';
+        if (k === 'math_single' && Array.isArray(r) && /^math\.log10\(/.test(r[0])) r = [`(math.log(${r[0].slice(11, -1)}) / math.log(10))`, 0];
+        return r;
+      };
+    }
     // Pybricks 에는 numbers 모듈이 없음 (에디터 js/blocks.js 와 같게)
     g.math_change = (b) => {
       const d = PY.valueToCode(b, 'DELTA', 6) || '0';

@@ -1,11 +1,11 @@
 // blocks.js — 로보메이커스 워드블럭 정의 + 파이썬(Pybricks) 생성기
 /* global Blockly, python */
 
-import { hub } from './hubs.js?v=0.3.22';
-import { t, cocoLabel } from './i18n.js?v=0.3.22';
-import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.22';
-import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.22';
-import { beginTasks, TRACE_DEF_TASKS } from './tasks.js?v=0.3.22';
+import { hub } from './hubs.js?v=0.3.23';
+import { t, cocoLabel } from './i18n.js?v=0.3.23';
+import { OBJ_PICK, cocoId, TEACH_CLASSES, COLOR_SLOTS } from './aicam.js?v=0.3.23';
+import { installMultiPorts, MULTI_PORT_BLOCKS } from './multiport.js?v=0.3.23';
+import { beginTasks, TRACE_DEF_TASKS } from './tasks.js?v=0.3.23';
 
 const G = python.pythonGenerator;
 const O = python.Order;
@@ -397,6 +397,15 @@ G.forBlock['rm_forever'] = (b) => {
 def('rm_wait_until', C.control, null, [{ type: 'input_value', name: 'COND', check: 'Boolean' }], 'stmt');
 // 「변수를 ~만큼 바꾸기」: Blockly 기본 코드는 `from numbers import Number` 를 쓰는데
 // Pybricks(MicroPython)에는 numbers 모듈이 없어 허브에서 ImportError 가 납니다 → (int, float) 로 검사
+// 계산 블록의 log10: Pybricks umath 에는 log10 이 없음 → log(x) / log(10)
+{
+  const single = G.forBlock['math_single'];
+  G.forBlock['math_single'] = function (b, g) {
+    const r = single.call(this, b, g);
+    if (Array.isArray(r) && /^math\.log10\(/.test(r[0])) return [`(math.log(${r[0].slice(11, -1)}) / math.log(10))`, O.ATOMIC];
+    return r;
+  };
+}
 G.forBlock['math_change'] = (b) => {
   const d = G.valueToCode(b, 'DELTA', O.ADDITIVE) || '0';
   const v = G.getVariableName(b.getFieldValue('VAR'));
@@ -714,7 +723,8 @@ function generate_(workspace, trace, traceIds) {
   let varInit = '';
   for (const [k, v] of Object.entries(G.definitions_)) {
     if (k === 'variables') varInit = v;
-    else if (/^(from\s+\S+\s+)?import\s/.test(v)) lines.push(v);
+    // Pybricks 의 모듈 이름은 umath · urandom (문서 기준) — 코드는 math.·random. 그대로 쓰도록 별명으로
+    else if (/^(from\s+\S+\s+)?import\s/.test(v)) lines.push(v === 'import math' ? 'import umath as math' : v === 'import random' ? 'import urandom as random' : v);
     else defs.push(tasks ? tasks.def(k, v) : v);
   }
   G.definitions_ = Object.create(null);
